@@ -11,7 +11,7 @@ write_to = "moexalgo/__version__.py"
 
 [project]
 name = "moexalgo"
-description = "A useful wrapper for MOEX/ISS API"
+description = "Python lib for MOEX AlgoPack data"
 readme = "README.md"
 requires-python = ">=3.8"
 
