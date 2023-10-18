@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["moex*"]
+namespaces = true
+
+[tool.setuptools_scm]
+write_to = "moexalgo/__version__.py"
+
+[project]
+name = "moexalgo"
+description = "A useful wrapper for MOEX/ISS API"
+readme = "README.md"
+requires-python = ">=3.8"
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "License :: OSI Approved :: Apache Software License",
+  "Intended Audience :: Financial and Insurance Industry"
+]
+
+dynamic = ["version"]
+dependencies = [
+    "httpx"
+]
+
+
+[project.optional-dependencies]
+pandas = [
+    "pandas==1.4.1"
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
