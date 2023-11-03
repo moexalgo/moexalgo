@@ -34,7 +34,7 @@ from moexalgo import Ticker
 sber = Ticker('SBER')
 
 # получим дневные свечи с 2020 года
-sber.candles(date='2020-01-01', period='1d').head()
+sber.candles(date='2020-01-01', till_date='2023-11-01', period='D').head()
 ```
 
 <br>
