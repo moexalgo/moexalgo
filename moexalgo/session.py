@@ -455,7 +455,7 @@ def data_gen(cs: Session,
                 for item in metrics:
                     yield item
                     start += 1
-                    if (start - offset) >= limit:
+                    if (start - offset) >= limit or limit < -1:
                         return
             else:
                 return

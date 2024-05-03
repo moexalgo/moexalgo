@@ -232,7 +232,7 @@ class Market:
         if securities or marketdata:
             return dict(securities=securities, marketdata=marketdata)
     
-    def _normalize_row(row: dict[str, dict], fields: tuple[str]) -> dict[str, dict]:
+    def _normalize_row(self, row: dict[str, dict], fields: tuple[str]) -> dict[str, dict]:
         """
         Нормализует строку данных о статистике инструмента.
 

@@ -5,6 +5,7 @@
     - pip config set global.trusted-host "nexus-dev.tech.moex.com:443"
     - pip config set global.index "https://nexus-dev.tech.moex.com/repository/moex-pypi-static-group/pypi"
     - pip config set global.index-url "https://nexus-dev.tech.moex.com/repository/moex-pypi-static-group/simple"
+    - pip config set global.extra-index-url "https://nexus-dev.tech.moex.com/repository/mdata-pypi-static-group/simple"
     - pip config set global.no-cache-dir "false"
     - pip install sphinx sphinx_rtd_theme pandas httpx
 image: nexus-dev.tech.moex.com/moex-docker-static-group/python:3.10

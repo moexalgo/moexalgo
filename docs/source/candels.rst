@@ -36,8 +36,6 @@ MoexAlgo предоставляет наборы данных
 
 Быстрое знакомство с библиотекой moexalgo - `quick_start.ipynb <./../../../samples/quick_start.ipynb>`_
 
-Получение данных с использованием API - `download_algopack_data.ipynb <./../../../samples/download_algopack_data.ipynb>`_
-
 Пример авторизации - `auth.ipynb <./../../../samples/auth.ipynb>`_
 
 Для работы с библиотекой необходимо авторизоваться на https://passport.moex.com

@@ -273,13 +273,15 @@ class _Ticker:
         return : Union[iter, pd.DataFrame]
             Стакан лучших цен.
         """
+        if self._PATH.startswith('engines/currency/markets'):
+            raise NotImplementedError("OrderBook is not implemented for currencies")
         path = f'{self._PATH}/boards/{self._boardid}/securities/{self._secid}/orderbook'
         orderbook_it = data_gen(
             cs=cs, 
             path=path, 
             options={}, 
             offset=0, 
-            limit=1_000, 
+            limit=-1,
             section='orderbook'
         )
         return pandas_frame(orderbook_it) if use_dataframe else dataclass_it(orderbook_it)
