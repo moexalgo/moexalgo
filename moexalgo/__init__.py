@@ -1,44 +1,80 @@
 from __future__ import annotations
 
+from .currency import Currency
+from .futures import Futures
+
 try:
     from .__version__ import version as __version__
 except ImportError:
     pass
 
 import re
+from typing import Union
 
 from .market import Market
 from .indices import Index
-from .shares import Share
+from .stocks import Stock
+from .utils import CandlePeriod
 
 
-def Ticker(secid: str, boardid: str = None) -> Index | Share:
-    """ Резолвер тикера
+def Ticker(secid: str, boardid: str = None) -> Union[Index, Stock]:
+    """
+    Получение объекта финансового инструмента по тикеру и типу рынка.
+
+    Этот метод позволяет получить объект `Index` или `Stock`, содержащий информацию
+    о финансовом инструменте, идентифицируемом по тикеру и, опционально, типу рынка.
 
     Parameters
     ----------
-    secid: str
-        Тикер инструмента
-    boardid: str
-        Тип рынка
+    secid : str
+        Тикер финансового инструмента, например "GAZP" для акций Газпрома.
+    boardid : str, optional
+        Идентификатор рынка, на котором торгуется инструмент, 
+        например "TQBR" для основного рынка акций на Московской бирже. 
+
+    Notes
+    -----
+    По умолчанию значение `None` для `boardid` означает использование стандартного рынка.
 
     Returns
     -------
-     Обект класса Index или Share
+    return : Union[Index, Stock]
+        Объект класса Index или Stock, содержащий информацию о запрашиваемом финансовом инструменте.
 
     Raises
     ------
     LookupError
-        Если тикер не найден.
+        Исключение возникает, если тикер не найден на указанном рынке.
+
+    Example
+    -------
+    .. code-block:: python
+    
+        # Получение информации об акции
+        >>> try:
+        >>>     instrument = Ticker("GAZP", "TQBR")
+        >>>     print(instrument)
+        >>> except LookupError:
+        >>>     print("Тикер не найден.")
     """
     if boardid is None:
         secid, *args = re.split('\W', secid)
         if args:
             boardid = args[0]
-    shares = Market('shares', boardid)
-    if shares._ticker_info(secid):
-        return Share(secid, shares._boardid)
+    stocks = Market('stocks', boardid)
+    if stocks._ticker_info(secid):
+        return Stock(secid, stocks._boardid)
+
+    currencies = Market('selt', boardid)
+    if currencies._ticker_info(secid):
+        return Currency(secid, currencies._boardid)
+
     indices = Market('index', boardid)
     if indices._ticker_info(secid):
         return Index(secid, indices._boardid)
+
+    futures = Market('forts', boardid)
+    if futures._ticker_info(secid):
+        return Futures(secid, futures._boardid)
+
     raise LookupError(f"Cannot found ticker: `{secid}`")

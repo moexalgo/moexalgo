@@ -1,0 +1,63 @@
+# The Docker image that will be used to build your app
+.build_pypi:
+  # Functions that should be executed before the build script is run
+  before_script:
+    - pip config set global.trusted-host "nexus-dev.tech.moex.com:443"
+    - pip config set global.index "https://nexus-dev.tech.moex.com/repository/moex-pypi-static-group/pypi"
+    - pip config set global.index-url "https://nexus-dev.tech.moex.com/repository/moex-pypi-static-group/simple"
+    - pip config set global.no-cache-dir "false"
+    - pip install sphinx sphinx_rtd_theme pandas httpx
+image: nexus-dev.tech.moex.com/moex-docker-static-group/python:3.10
+
+stages:
+  - build
+  - push
+
+build:
+  extends: .build_pypi
+  stage: build
+  script:
+    - echo 'Build project'
+    - mkdir build
+    - pip install --upgrade pip
+    - pip install setuptools setuptools_scm[toml] wheel --upgrade
+    - pip wheel . -w build
+    - echo 'Build project success'
+  artifacts:
+    # The folder that contains the files to be exposed at the Page URL
+    paths:
+      - build
+    expire_in: 1 week
+
+pages:
+  stage: build
+  extends: .build_pypi
+  script:
+    - echo 'Create docs'
+    - cd docs
+    - make clean
+    - make html
+    - mkdir ../public
+    - cp -r ./build/html/* ../public/
+    - echo 'Docs completed'
+  artifacts:
+    # The folder that contains the files to be exposed at the Page URL
+    paths:
+      - public
+    expire_in: 1 week
+
+push:
+  stage: push
+  image: nexus-dev.tech.moex.com/moex-docker-static-group/dop-tekton/isvuln-pypi/python:3.9-twine-alpine3.13-16
+  script: 
+    - cd build
+    - for file in *.whl; do twine upload --skip-existing "$file" -u "$DOP_NEXUS_USER" -p "$DOP_NEXUS_USER_PASSWORD" --repository-url https://nexus-dev.tech.moex.com/repository/mdata-pypi-static-hosted/; done
+  needs: 
+    - build
+  when: on_success
+  # trigger that run this stage
+  only:
+    refs:
+      - tags
+    variables:
+      - $CI_COMMIT_TAG =~ /^v.*$/
