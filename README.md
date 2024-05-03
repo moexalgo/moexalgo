@@ -39,11 +39,9 @@
 
 <hr>
 
-#### ⚡️ Быстрое знакомство с библиотекой MoexAlgo - [quick_start.ipynb](./samples/quick_start.ipynb)
+#### ⚡️ Быстрое знакомство с библиотекой MoexAlgo - [quick_start.ipynb](https://github.com/moexalgo/moexalgo/blob/main/samples/quick_start.ipynb)
 
-#### ⬇️ Получение данных через API - [download_algopack_data.ipynb](./samples/download_algopack_data.ipynb)
-
-#### 🔐 Пример авторизации - [auth.ipynb](./samples/auth.ipynb)
+#### 🔐 Пример авторизации - [auth.ipynb](https://github.com/moexalgo/moexalgo/blob/main/samples/auth.ipynb)
 <hr>
 
 Для работы с библиотекой необходимо авторизоваться на https://passport.moex.com
