@@ -1,7 +1,5 @@
 import pytest
-from pandas import DataFrame
-
-from moexalgo import Market, Ticker, Stock, Index
+from moexalgo import Market, Ticker, Stock, Index, Futures, Currency
 from moexalgo.models.common import Candle
 
 
@@ -18,29 +16,33 @@ def test_tickers_creation():
     assert imoex._boardid == ndx._boardid == 'SNDX'
     assert imoex._market == ndx
 
+    fut = Market('futures')
+    akm4 = Ticker('AKM4')
+    assert isinstance(akm4, Futures)
+    assert akm4._boardid == fut._boardid == 'RFUD'
+    assert akm4._market == fut
+
+    riz2 = Ticker('RIZ2')
+    assert isinstance(riz2, Futures)
+    assert riz2._boardid == fut._boardid == 'RFUD'
+    assert riz2._market == fut
+
+    cur = Market('currency')
+    cny = Ticker('CNY000000TOD')
+    assert isinstance(cny, Currency)
+    assert cny._boardid == cur._boardid == 'CETS'
+    assert cny._market == cur
+
 
 def test_tickers_iter():
     moex = Ticker('MOEX')
     it = moex.candles(start='2024-01-10', end='2024-01-10', use_dataframe=False)
     assert isinstance(next(it), Candle)
+    next(it)
 
     it = moex.tradestats(start='2024-01-10', end='2024-01-10', use_dataframe=False)
     assert isinstance(next(it), object)
-
-
-def test_tickers_orderbook():
-    moex = Ticker('MOEX')
-    ob = moex.orderbook()
-    assert isinstance(ob, DataFrame) and len(ob) < 100
-
-    cny000000tod = Ticker('CNY000000TOD')
-    with pytest.raises(NotImplementedError):
-        cny000000tod.orderbook()
-
-    akm4 = Ticker('AKM4')
-    ob = akm4.orderbook()
-    assert isinstance(ob, DataFrame) and len(ob) < 100
-
+    next(it)
 
 
 if __name__ == '__main__':

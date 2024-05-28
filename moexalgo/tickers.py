@@ -5,9 +5,9 @@ import re
 from typing import Union
 import weakref
 
-from moexalgo.candles import Candle, dataclass_it, prepare_request, pandas_frame
+from moexalgo.candles import Candle, prepare_request, pandas_frame, dataclass_it
 from moexalgo.market import Market
-from moexalgo.metrics import prepare_market_request
+from moexalgo.metrics import prepare_market_request, dataclass_it as dict_it
 from moexalgo.session import Session, data_gen
 from moexalgo.utils import pd, CandlePeriod
 
@@ -329,9 +329,10 @@ class _Ticker:
         NotImplementedError
             Вызывается, если `FUTOI` не поддерживается для данного рынка.
         """
-
-        sectype = self._market._values['securities'][self._secid]['SECTYPE']
-
+        if self._secid in self._market._values['securities']:
+            sectype = self._market._values['securities'][self._secid]['SECTYPE']
+        else:
+            sectype = self._secid[:2]
         metrics_it = prepare_market_request(
             f'fo/futoi/{sectype}',
             cs,
@@ -341,4 +342,4 @@ class _Ticker:
             # latest=latest,
             # offset=offset
         )
-        return pandas_frame(metrics_it) if use_dataframe else dataclass_it(metrics_it)
+        return pandas_frame(metrics_it) if use_dataframe else dict_it(metrics_it)
