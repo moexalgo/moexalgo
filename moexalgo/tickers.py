@@ -7,6 +7,7 @@ import weakref
 
 from moexalgo.candles import Candle, dataclass_it, prepare_request, pandas_frame
 from moexalgo.market import Market
+from moexalgo.metrics import prepare_market_request
 from moexalgo.session import Session, data_gen
 from moexalgo.utils import pd, CandlePeriod
 
@@ -69,6 +70,7 @@ class _Ticker:
 
     _secid: str
     _boardid: str
+    _delisted: bool
 
     def __new__(cls, secid: str, boardid: str = None) -> _Ticker:
         """
@@ -87,16 +89,18 @@ class _Ticker:
             Объект инструмента.
         """
         if boardid is None:
-            secid, *args = re.split('\W', secid)
+            secid, *args = re.split('[^a-zA-Z0-9-]', secid)
             if args:
                 boardid = args[0]
         
         market = Market(cls._PATH, boardid)
-        if market._ticker_info(secid):
+        delisted = False if market._ticker_info(secid) else market._is_delisted(secid)
+        if market._ticker_info(secid) or delisted:
             instance = super().__new__(cls)
             instance._secid = secid
             instance._boardid = market._boardid
             instance._r_market = weakref.ref(market)
+            instance._delisted = delisted
             return instance
         raise LookupError(f"Cannot found ticker: ({secid}, {boardid or ''})")
 
@@ -285,3 +289,56 @@ class _Ticker:
             section='orderbook'
         )
         return pandas_frame(orderbook_it) if use_dataframe else dataclass_it(orderbook_it)
+
+    def futoi(
+            self,
+            *,
+            start: Union[str, date],
+            end: Union[str, date],
+            # latest: bool = None,
+            # offset: int = None,
+            cs: Session = None,
+            use_dataframe: bool = True
+    ) -> Union[iter, pd.DataFrame]:
+        """
+        Возвращает метрики `FUTOI` по заданным параметрам.
+
+        Parameters
+        ----------
+        start : Union[str, date]
+            Дата начала диапазона выдачи данных. (`start` может быть равен `end`, тогда вернутся записи за один день)
+        end : Union[str, date]
+            Дата конца диапазона выдачи данных.
+        latest : bool, optional
+            Включает режим выдачи последних записей в наборе.
+        offset : int, optional
+            Начальная позиция в последовательности записей.
+        cs : Session, optional
+            Клиентская сессия, если используется.
+        use_dataframe : bool, optional
+            Изменяет тип возвращаемого объекта, by default `True`.
+            Если `True`, то возвращает `pd.DataFrame`, иначе итератор.
+
+        Returns
+        -------
+        return : Union[iter, pd.DataFrame]
+            Итератор или `pd.DataFrame` метрик `FUTOI`.
+
+        Raises
+        ------
+        NotImplementedError
+            Вызывается, если `FUTOI` не поддерживается для данного рынка.
+        """
+
+        sectype = self._market._values['securities'][self._secid]['SECTYPE']
+
+        metrics_it = prepare_market_request(
+            f'fo/futoi/{sectype}',
+            cs,
+            secid=self._secid,
+            start=start,
+            end=end,
+            # latest=latest,
+            # offset=offset
+        )
+        return pandas_frame(metrics_it) if use_dataframe else dataclass_it(metrics_it)

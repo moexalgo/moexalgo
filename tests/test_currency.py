@@ -9,14 +9,16 @@ def test_candles_currency():
     cny000000tod = Currency('CNY000000TOD', 'CETS')
     it = cny000000tod.candles(start='2024-04-22', end='2024-04-22', use_dataframe=False)
     assert isinstance(next(it), object)
-    
+    assert next(it)
+
 
     it = cny000000tod.candles(start='2024-04-22', end='2024-04-22', use_dataframe=True)
     assert isinstance(it, pd.DataFrame)
 
     it = cny000000tod.tradestats(start='2024-04-22', end='2024-04-22', use_dataframe=False)
     assert isinstance(next(it), object)
-    
+    assert next(it)
+
 
 
 def test_currency_ticker():
@@ -27,7 +29,8 @@ def test_currency_ticker():
 
     it = cny000000tod.tradestats(start='2024-04-22', end='2024-04-22', use_dataframe=False)
     assert isinstance(next(it), object)
-    
+    assert next(it)
+
 
 
 def test_currency_tradestats():

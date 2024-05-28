@@ -227,11 +227,13 @@ def prepare_request(metric: str,
     return data_gen(cs, path, options, offset, limit, section='data')
 
 
-def prepare_market_request(metric: str, 
+def prepare_market_request(metric: str,
                            cs: Session, 
                            *, 
                            secid: str = None, 
                            date_: Union[str, date] = None,
+                           start: Union[str, date] = None,
+                           end: Union[str, date] = None,
                            latest: bool = False, 
                            offset: int = None, 
                            limit: int = None) -> iter[dict]:
@@ -246,6 +248,10 @@ def prepare_market_request(metric: str,
         Сессия.
     secid : str, optional
         Наименование инструмента, by default None.
+    start : Union[str, date]
+            Дата начала диапазона выдачи данных. (`start` может быть равен `end`, тогда вернутся записи за один день)
+    end : Union[str, date]
+        Дата конца диапазона выдачи данных.
     date_ : Union[str, date], optional
         Дата, by default None.
     latest : bool, optional
@@ -264,15 +270,29 @@ def prepare_market_request(metric: str,
     date_ = date.today() if (date_ is None) or (date_ == 'today') else date_
     if isinstance(date_, str):
         date_ = date.fromisoformat(date_)
-    
-    options = {'date': date_.isoformat()}
+
+    if isinstance(start, str):
+        start = date.fromisoformat(start)
+
+    if isinstance(end, str):
+        end = date.fromisoformat(end)
+
+    if secid is not None:
+        options = {'from': start.isoformat(), 'till': end.isoformat()}
+    else:
+        options = {'date': date_.isoformat()}
+
     if latest:
         options['latest'] = 1
     
     offset, limit = clac_offset_limit(offset, limit)
-    if metric.lower() == 'fo/futoi':
-        section = 'futoi'
-        path = f'analyticalproducts/futoi/securities'
+    if metric.lower().startswith('fo/futoi'):
+        if len(metric.lower().split("/")) == 3:
+            section = 'futoi'
+            path = f'analyticalproducts/futoi/securities/{metric.lower().split("/")[-1]}'
+        else:
+            section = 'futoi'
+            path = f'analyticalproducts/futoi/securities'
     else:
         section = 'data'
         path = get_metrics_path(metric, secid)

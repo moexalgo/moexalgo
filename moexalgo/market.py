@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import date
 import re
+from datetime import date
 from typing import Optional, Union
 
 from moexalgo import session
 from moexalgo.metrics import prepare_market_request, dataclass_it, pandas_frame
-from moexalgo.session import Session
+from moexalgo.session import Session, data_gen
 from moexalgo.utils import result_deserializer, pd
 
 _AVAILABLE = {
@@ -122,6 +123,7 @@ class Market:
     _boardid: str
     _fields: dict[str, dict[str, dict]] = None
     _values: dict[str, dict[str, dict]] = None
+    _delisted: list = None
     _LIMIT = 25_000
 
     def __new__(cls, name: str, boardid: str = None) -> Market:
@@ -161,7 +163,7 @@ class Market:
             if boardid is not None:
                 name = name_
             else:
-                name, *args = re.split('\W', name)
+                name, *args = re.split('[^a-zA-Z0-9-]', name)
                 if args:
                     boardid = args[0]
             
@@ -209,6 +211,20 @@ class Market:
                 self._values = client.get_objects(
                     f'{self._path}/{self._name}/boards/{self._boardid}/securities/',
                     lambda data: result_deserializer(data, key=lambda item: item['SECID']))
+
+    def _is_delisted(self, secid: str, cs: Session = None):
+        self._ensure_loaded(cs)
+        if self._delisted is None:
+            market = self._name
+            engine = self._path.split('/')[1]
+            "&group_by=type&group_by_filter=preferred_share&iss.only=securities&securities.columns=secid"
+            with Session(cs or session.default) as client:
+                data = data_gen(cs, f'securities/',
+                                {'engine': engine, 'market': market, 'is_trading': 0,
+                                 'iss.only': 'securities', 'securities.columns': 'secid'},
+                                0, 10000, 'securities')
+                self._delisted = [row['secid'] for row in data]
+        return secid in self._delisted
 
     def _ticker_info(self, secid: str, cs: Session = None) -> dict[str, dict[str, dict]]:
         """
@@ -523,8 +539,8 @@ class Market:
     def futoi(self, 
               *, 
               date: Union[str, date] = None, 
-              latest: bool = None,
-              offset: int = None,
+              # latest: bool = None,
+              # offset: int = None,
               cs: Session = None, 
               use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
         """
@@ -561,8 +577,8 @@ class Market:
             'FUTOI',
             self._pref,
             date, 
-            latest,
-            offset,
-            cs, 
-            use_dataframe
+            latest=None,
+            offset=None,
+            cs=cs,
+            use_dataframe=use_dataframe
         )

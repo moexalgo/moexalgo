@@ -9,6 +9,7 @@ def test_candles_shares():
     ABIO = Stock('ABIO', 'TQBR')
     it = ABIO.candles(start='2024-04-22', end='2024-04-22', use_dataframe=False)
     assert isinstance(next(it), object)
+    assert next(it)
     
 
     it = ABIO.candles(start='2024-04-22', end='2024-04-22', use_dataframe=True)
@@ -16,14 +17,16 @@ def test_candles_shares():
 
     it = ABIO.tradestats(start='2024-04-22', end='2024-04-22', use_dataframe=False)
     assert isinstance(next(it), object)
-    
+    assert next(it)
+
 
 
 def test_shares_ticker():
     ABIO = Ticker('ABIO')
     it = ABIO.candles(start='2024-04-22', end='2024-04-22', use_dataframe=False)
     assert isinstance(next(it), object)
-    
+    assert next(it)
+
 
 
 def test_shares_tradestats():
@@ -35,6 +38,13 @@ def test_shares_tradestats():
         ABIO.tradestats(start='2024-04-23', end='2024-04-22')
     with pytest.raises(Exception):
         ABIO.tradestats(start=None, end=None)
+
+
+def test_delisted_shares():
+    MFON = Stock('MORI', 'TQBR')
+    it = MFON.obstats(start='2022-04-07', end='2022-04-07', use_dataframe=False)
+    assert next(it)
+    assert next(it)
 
 
 def test_shares_orderstats():

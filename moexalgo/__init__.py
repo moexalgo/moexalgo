@@ -58,9 +58,10 @@ def Ticker(secid: str, boardid: str = None) -> Union[Index, Stock]:
         >>>     print("Тикер не найден.")
     """
     if boardid is None:
-        secid, *args = re.split('\W', secid)
+        secid, *args = re.split('[^a-zA-Z0-9-]', secid)
         if args:
             boardid = args[0]
+
     stocks = Market('stocks', boardid)
     if stocks._ticker_info(secid):
         return Stock(secid, stocks._boardid)
