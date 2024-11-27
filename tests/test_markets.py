@@ -8,6 +8,10 @@ def test_markets_creation():
     assert eq == Market('shares')
     assert eq == Market('shares', 'TQBR')
 
+    tickers = eq.tickers(use_dataframe=False)
+    assert len([ticker for ticker in tickers]) > 50
+
+
     it = eq.tradestats(date="2024-01-10", use_dataframe=False)
     assert isinstance(next(it), object)
     assert next(it)
@@ -29,6 +33,10 @@ def test_market_eq():
 
 def test_market_fx():
     fx = Market('currency')
+    tickers = fx.tickers(use_dataframe=False)
+    assert len([ticker for ticker in tickers]) > 10
+
+
     assert fx._pref == 'fx'
     it = fx.tradestats(date="2024-04-22", use_dataframe=False)
     assert isinstance(next(it), object)
@@ -38,6 +46,9 @@ def test_market_fx():
 
 def test_market_fo():
     fo = Market('futures')
+    tickers = fo.tickers(use_dataframe=False)
+    assert len([ticker for ticker in tickers]) > 10
+
     assert fo._pref == 'fo'
     it = fo.tradestats(date="2024-04-22", use_dataframe=False)
     assert isinstance(next(it), object)

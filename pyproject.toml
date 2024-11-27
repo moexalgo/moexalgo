@@ -24,14 +24,21 @@ classifiers = [
 
 dynamic = ["version"]
 dependencies = [
-    "httpx"
+    "httpx",
 ]
 
 
 [project.optional-dependencies]
 pandas = [
-    "pandas==1.4.1"
+    "pandas==1.4.1",
+    "numpy==1.26.4"
 ]
+
+issplus = [
+    "websockets",
+    "stomp.py"
+]
+
 
 [tool.pytest.ini_options]
 minversion = "6.0"

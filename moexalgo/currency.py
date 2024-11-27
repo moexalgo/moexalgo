@@ -7,7 +7,7 @@ import pandas as pd
 
 from moexalgo.metrics import prepare_request, dataclass_it, pandas_frame
 from moexalgo.session import Session
-from moexalgo.tickers import _Ticker
+from moexalgo.tickers import _Ticker, _resolve_ticker
 
 
 class Currency(_Ticker):
@@ -300,6 +300,51 @@ class Currency(_Ticker):
             cs,
             use_dataframe
         )
+
+
+    def alerts(self,
+            *,
+            start: Union[str, date],
+            end: Union[str, date],
+            latest: bool = None,
+            offset: int = None,
+            cs: Session = None,
+            use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+        """
+        Возвращает MegaAlert (оповещение об аномальной рыночной активности) по заданным параметрам.
+
+        Parameters
+        ----------
+        start : Union[str, date]
+            Дата начала диапазона выдачи данных. (`start` может быть равен `end`, тогда вернутся записи за один день)
+        end : Union[str, date]
+            Дата конца диапазона выдачи данных.
+        latest : bool, optional
+            Включает режим выдачи последних `latest` записей в наборе, by default None.
+        offset : int, optional
+            Начальная позиция в последовательности записей, by default None.
+        cs : Session, optional
+            Клиентская сессия, если используется, by default None.
+        use_dataframe : bool, optional
+            Изменяет тип возвращаемого объекта, by default `True`.
+            Если `True`, то возвращает `pd.DataFrame`, иначе итератор.
+
+        Returns
+        ----------
+        return : Union[iter, pd.DataFrame]
+            Итератор или `pd.DataFrame`
+        """
+        return self._prepare_metric(
+            self._TYPE,
+            'alerts',
+            start,
+            end,
+            latest,
+            offset,
+            cs,
+            use_dataframe
+        )
+
 
 
 def get(name: str) -> Currency:

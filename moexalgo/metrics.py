@@ -88,11 +88,11 @@ def dataclass_it(metrics_it: iter[dict]) -> iter[DCls]:
         yield DCls(**data)
 
 
-def clac_offset_limit(offset: int = None, 
-                      limit: int = None, 
+def calc_offset_limit(offset: int = None,
+                      limit: int = None,
                       min_limit: int = 1,
-                      standart_limit: int = 10_000, 
-                      max_limit: int = 50_000, 
+                      standart_limit: int = 10_000,
+                      max_limit: int = 50_000,
                       min_offset: int = 0) -> tuple[int, int]:
     """
     Вычисление смещения и лимита.
@@ -110,10 +110,11 @@ def clac_offset_limit(offset: int = None,
         Кортеж со смещением и лимитом.
     """
     offset = offset or min_offset
-    limit = limit or standart_limit
+    if limit != -1:
+        limit = limit or standart_limit
 
-    limit = limit if min_limit <= limit <= max_limit else standart_limit
-    offset = offset if min_offset <= offset < limit else min_offset
+        limit = min_limit if limit < min_limit else max_limit if limit > max_limit else limit
+        offset = min_offset if offset < min_offset else max_limit - 1 if offset >= max_limit else offset
 
     return offset, limit
 
@@ -221,7 +222,7 @@ def prepare_request(metric: str,
     if latest:
         options['latest'] = 1
 
-    offset, limit = clac_offset_limit(offset, limit)
+    offset, limit = calc_offset_limit(offset, limit)
     path = get_metrics_path(metric, secid)
 
     return data_gen(cs, path, options, offset, limit, section='data')
@@ -285,7 +286,7 @@ def prepare_market_request(metric: str,
     if latest:
         options['latest'] = 1
     
-    offset, limit = clac_offset_limit(offset, limit)
+    offset, limit = calc_offset_limit(offset, limit)
     if metric.lower().startswith('fo/futoi'):
         if len(metric.lower().split("/")) == 3:
             section = 'futoi'

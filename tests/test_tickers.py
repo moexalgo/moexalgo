@@ -1,5 +1,5 @@
 import pytest
-from moexalgo import Market, Ticker, Stock, Index, Futures, Currency
+from moexalgo import Ticker, Market, Stock, Index, Futures, Currency
 from moexalgo.models.common import Candle
 
 

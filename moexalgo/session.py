@@ -9,9 +9,11 @@ import httpx
 from moexalgo.utils import json, result_deserializer
 
 BASE_URL = 'https://iss.moex.com/iss'
+TOKEN_URL = 'https://apim.moex.com/iss'
 AUTH_URL = 'https://passport.moex.com/authenticate'
 AUTH_CERT = None
 USE_HTTPS = True
+TOKEN = None
 _NEXT_REQUEST_AT = 0
 _REQUEST_TIMEOUT = 0.1
 
@@ -43,13 +45,20 @@ class HasOptions:
         -------
         return : None
         """
-
+        global TOKEN
         base_url = base_url or BASE_URL
+        if TOKEN:
+            base_url = TOKEN_URL
+            if 'headers' not in options:
+                options['headers'] = []
+            if not [name for name, _ in options['headers'] if name=='Authorization']:
+                options['headers'].append(('Authorization', f'Bearer {TOKEN}'))
         if base_url.startswith('http:') and USE_HTTPS:
             base_url = base_url.replace('http:', 'https:')
         elif base_url.startswith('https:') and not USE_HTTPS:
             base_url = base_url.replace('https:', 'http:')
-        
+            options['verify'] = False
+
         self.__options = dict(**options, base_url=base_url, timeout=timeout)
         if auth_cert:
             self.__options.setdefault('cookies', {})['MicexPassportCert'] = auth_cert
@@ -417,11 +426,11 @@ def __getattr__(name: str) -> Session:
         return Session(auth_cert=AUTH_CERT)
 
 
-def data_gen(cs: Session, 
-             path: str, 
-             options: dict, 
-             offset: int, 
-             limit: int, 
+def data_gen(cs: Session,
+             path: str,
+             options: dict,
+             offset: int,
+             limit: int,
              section: str = 'data') -> Optional[Iterator[dict]]:
     """
     Генератор данных.

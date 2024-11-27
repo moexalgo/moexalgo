@@ -5,7 +5,7 @@ from typing import Union, Iterator
 
 import pandas as pd
 
-from moexalgo.metrics import clac_offset_limit, prepare_from_till_dates
+from moexalgo.metrics import calc_offset_limit, prepare_from_till_dates
 from moexalgo.models import Candle
 from moexalgo.session import Session, data_gen
 from moexalgo.utils import CandlePeriod
@@ -174,7 +174,7 @@ def prepare_request(cs: Session,
             'interval': interval_seconds
         }
 
-    offset, limit = clac_offset_limit(offset, limit)
+    offset, limit = calc_offset_limit(offset, limit)
 
     if latest:
         options['iss.reverse'] = True

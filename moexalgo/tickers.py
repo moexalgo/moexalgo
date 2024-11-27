@@ -1,10 +1,13 @@
 from __future__ import annotations
+import typing as t
 
-from datetime import date
+from datetime import date, datetime
 import re
 from typing import Union
 import weakref
 
+from moexalgo import trades
+from moexalgo.requests import get_secid_info_and_boards
 from moexalgo.candles import Candle, prepare_request, pandas_frame, dataclass_it
 from moexalgo.market import Market
 from moexalgo.metrics import prepare_market_request, dataclass_it as dict_it
@@ -71,8 +74,11 @@ class _Ticker:
     _secid: str
     _boardid: str
     _delisted: bool
+    _sec_info: dict[str, t.Any] = dict()
+    _board_info: dict[str, t.Any] = dict()
 
-    def __new__(cls, secid: str, boardid: str = None) -> _Ticker:
+    def __new__(cls, secid: str, boardid: str = None, market: str = None,
+                engine: str = None, description: dict = None, board_info: dict = None) -> _Ticker:
         """
         Создает новый объект инструмента.
 
@@ -82,27 +88,32 @@ class _Ticker:
             Идентификатор инструмента.
         boardid : str
             Идентификатор рынка.
+        market : str
+            Рынок
 
         Returns
         -------
         _Ticker
             Объект инструмента.
         """
-        if boardid is None:
-            secid, *args = re.split('[^a-zA-Z0-9-]', secid)
-            if args:
-                boardid = args[0]
-        
-        market = Market(cls._PATH, boardid)
-        delisted = False if market._ticker_info(secid) else market._is_delisted(secid)
-        if market._ticker_info(secid) or delisted:
-            instance = super().__new__(cls)
-            instance._secid = secid
-            instance._boardid = market._boardid
-            instance._r_market = weakref.ref(market)
-            instance._delisted = delisted
-            return instance
-        raise LookupError(f"Cannot found ticker: ({secid}, {boardid or ''})")
+        if boardid is None or market is None:
+            if info := _resolve_ticker(secid, boardid):
+                secid, boardid, market, engine, description, board_info = info
+            else:
+                raise LookupError(f"Cannot found ticker: `{secid}`")
+
+        market = Market(market, boardid)
+        instance = super().__new__(cls)
+        instance._secid = secid
+        instance._boardid = market._boardid
+        instance._r_market = weakref.ref(market)
+        instance._sec_info = description
+        instance._board_info = board_info
+        return instance
+
+    @property
+    def delisted(self) -> bool:
+        return not self._board_info['listed_from'] <= datetime.now().date() <= self._board_info['listed_till']
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self._secid}/{self._boardid}')"
@@ -329,9 +340,8 @@ class _Ticker:
         NotImplementedError
             Вызывается, если `FUTOI` не поддерживается для данного рынка.
         """
-        if self._secid in self._market._values['securities']:
-            sectype = self._market._values['securities'][self._secid]['SECTYPE']
-        else:
+        sectype = self._secid
+        if self._secid not in ('USDRUBF', 'EURRUBF', 'CNYRUBF'):
             sectype = self._secid[:2]
         metrics_it = prepare_market_request(
             f'fo/futoi/{sectype}',
@@ -340,6 +350,67 @@ class _Ticker:
             start=start,
             end=end,
             # latest=latest,
-            # offset=offset
+            # offset=offset,
+            limit=-1
         )
         return pandas_frame(metrics_it) if use_dataframe else dict_it(metrics_it)
+
+    @classmethod
+    def _get_sec_info(cls, secid: str):
+        if secid not in cls._sec_info:
+            rv = data_gen(None, f'securities/{secid}', {}, 0, 100, section='boards')
+            if found := [info for info in rv if info['is_primary'] == 1]:
+                cls._sec_info[secid] = found[0]
+        try:
+            return cls._sec_info[secid]
+        except KeyError:
+            raise LookupError(f"Cannot found ticker: `{secid}`")
+
+    def trades(self,
+                *,
+                tradeno: int = None,
+                cs: Session = None,
+                use_dataframe: bool = True) -> Union[iter[dict], pd.DataFrame]:
+        """
+        Возвращает итератор сделок за последний день или начиная с заданного `tradeno`.
+
+        Parameters
+        ----------
+        tradeno : int, optional
+            Номер сделки с которого выдаются данные, если не задано, то с начала дня.
+        cs : Session, optional
+            Клиентская сессия, если используется, by default None.
+        use_dataframe : bool, optional
+            Изменяет тип возвращаемого объекта, by default `True`.
+            Если `True`, то возвращает `pd.DataFrame`, иначе итератор.
+
+        Returns
+        -------
+        return : Union[iter[dict], pd.DataFrame]
+            Итератор сделок.
+        """
+
+        trades_it = trades.prepare_request(
+            cs,
+            self._PATH,
+            self._boardid,
+            self._secid,
+            tradeno=tradeno
+        )
+        return pandas_frame(trades_it) if use_dataframe else trades.dataclass_it(trades_it)
+
+def _resolve_ticker(secid: str, boardid: str = None) -> tuple[str, str, str, str, dict, dict]:
+    if boardid is None:
+        secid, *args = re.split('[^a-zA-Z0-9-]', secid)
+        if args:
+            boardid = args[0]
+    description, boards = get_secid_info_and_boards(secid)
+    if found := [board for name, board in boards.items() if board['is_primary']]:
+        board_info = found[0]
+        if boardid:
+            if boardid != board_info['boardid']:
+                raise ValueError("Wrong `boardid`")
+        boardid = board_info['boardid']
+        market = board_info['market']
+        engine = board_info['engine']
+        return secid, boardid, market, engine, description, board_info

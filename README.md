@@ -44,6 +44,8 @@
 #### ⬇️ Получение данных через API - [download_algopack_data.ipynb](./samples/download_algopack_data.ipynb)
 
 #### 🔐 Пример авторизации - [auth.ipynb](./samples/auth.ipynb)
+
+#### ⬇️ Получение данных c использованием APIКЕУ - [token.ipynb](./samples/token.ipynb)
 <hr>
 
 Для работы с библиотекой необходимо авторизоваться на https://passport.moex.com
@@ -158,7 +160,7 @@ sber.candles(start='2020-01-01', end='2023-11-01').head()
 Установка с помощью `pip`:
 
 ``` bash
-pip install moexalgo
+pip install moexalgo[pandas]
 ```
 
 ### 🔍 Requirements

@@ -20,6 +20,11 @@ def test_candles_shares():
     assert next(it)
 
 
+    VEON_RX = Stock('VEON-RX')
+    it = VEON_RX.tradestats(start='2024-05-06', end='2024-05-06', use_dataframe=False)
+    assert isinstance(next(it), object)
+    assert next(it)
+
 
 def test_shares_ticker():
     ABIO = Ticker('ABIO')
@@ -41,7 +46,11 @@ def test_shares_tradestats():
 
 
 def test_delisted_shares():
+    MOEX = Stock('MOEX')
+    assert not MOEX.delisted
+
     MFON = Stock('MORI', 'TQBR')
+    assert MFON.delisted
     it = MFON.obstats(start='2022-04-07', end='2022-04-07', use_dataframe=False)
     assert next(it)
     assert next(it)

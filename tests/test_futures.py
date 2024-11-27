@@ -30,6 +30,7 @@ def test_futures_ticker():
 
 def test_delisted_shares():
     RIZ2 = Futures('RIZ2', 'RFUD')
+    assert RIZ2.delisted
     it = RIZ2.tradestats(start='2022-08-02', end='2022-08-02', use_dataframe=False)
     assert next(it)
     assert next(it)

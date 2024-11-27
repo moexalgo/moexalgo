@@ -1,23 +1,29 @@
 from __future__ import annotations
 
-from .currency import Currency
-from .futures import Futures
+import re
+from typing import Union
+
+from .tickers import _Ticker, _resolve_ticker
 
 try:
     from .__version__ import version as __version__
 except ImportError:
     pass
 
-import re
-from typing import Union
+from .requests import get_secid_info_and_boards
 
 from .market import Market
-from .indices import Index
+from .tickers import _Ticker
 from .stocks import Stock
+from .indices import Index
+from .currency import Currency
+from .futures import Futures
 from .utils import CandlePeriod
 
+AnyTickers = Union['Stock', 'Index', 'Currency', 'Futures']
 
-def Ticker(secid: str, boardid: str = None) -> Union[Index, Stock]:
+
+def Ticker(secid: str, boardid: str = None) -> AnyTickers:
     """
     Получение объекта финансового инструмента по тикеру и типу рынка.
 
@@ -29,8 +35,8 @@ def Ticker(secid: str, boardid: str = None) -> Union[Index, Stock]:
     secid : str
         Тикер финансового инструмента, например "GAZP" для акций Газпрома.
     boardid : str, optional
-        Идентификатор рынка, на котором торгуется инструмент, 
-        например "TQBR" для основного рынка акций на Московской бирже. 
+        Идентификатор рынка, на котором торгуется инструмент,
+        например "TQBR" для основного рынка акций на Московской бирже.
 
     Notes
     -----
@@ -49,7 +55,7 @@ def Ticker(secid: str, boardid: str = None) -> Union[Index, Stock]:
     Example
     -------
     .. code-block:: python
-    
+
         # Получение информации об акции
         >>> try:
         >>>     instrument = Ticker("GAZP", "TQBR")
@@ -57,25 +63,9 @@ def Ticker(secid: str, boardid: str = None) -> Union[Index, Stock]:
         >>> except LookupError:
         >>>     print("Тикер не найден.")
     """
-    if boardid is None:
-        secid, *args = re.split('[^a-zA-Z0-9-]', secid)
-        if args:
-            boardid = args[0]
-
-    stocks = Market('stocks', boardid)
-    if stocks._ticker_info(secid):
-        return Stock(secid, stocks._boardid)
-
-    currencies = Market('selt', boardid)
-    if currencies._ticker_info(secid):
-        return Currency(secid, currencies._boardid)
-
-    indices = Market('index', boardid)
-    if indices._ticker_info(secid):
-        return Index(secid, indices._boardid)
-
-    futures = Market('forts', boardid)
-    if futures._ticker_info(secid):
-        return Futures(secid, futures._boardid)
-
+    if info := _resolve_ticker(secid, boardid):
+        secid, boardid, market, engine, *args = info
+        allowed_tickers = dict((item._PATH, item) for item in [Currency, Futures, Index, Stock])
+        if allowed_ticker := allowed_tickers.get(f'engines/{engine}/markets/{market}'):
+            return allowed_ticker(*info)
     raise LookupError(f"Cannot found ticker: `{secid}`")

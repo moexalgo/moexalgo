@@ -155,26 +155,20 @@ class Market:
             >>> market_instance = Market("index", "MOEX")
             >>> print(market_instance)
         """
-        path = 'engines/stock/markets'
-        if boardid is None:
-            name_, boardid = _ALIASES.get(name, (None, None))
-
-            if boardid is not None:
-                name = name_
-            else:
-                name, *args = re.split('[^a-zA-Z0-9-]', name)
-                if args:
-                    boardid = args[0]
-
-        if '/' in name:
-            *path, name = name.split('/')
-            path = "/".join(item for item in path if item)
+        if '/' not in name:
+            path, default_boardid = _ALIASES.get(name, (None, None))
+            boardid = boardid or default_boardid
+            name = path.split('/')[-1]
+        else:
+            path = name
+            name = name.split('/')[-1]
 
         if name not in _AVAILABLE:
             raise NotImplementedError(f"Market {name} is not supported")
 
         market = _AVAILABLE.setdefault(name, dict())
-        pref = [k for k, v in _ALIASES.items() if v[0].startswith(path) and len(k) == 2][0].lower()
+        prefs = [k for k, v in _ALIASES.items() if v[0].startswith(path) and len(k) == 2]
+        pref = prefs[0].lower() if prefs else None
         if boardid not in market:
             market[boardid] = super().__new__(cls)
             market[boardid]._name = name
@@ -204,26 +198,27 @@ class Market:
         if self._fields is None or self._values is None:
             with Session(cs or session.default) as client:
                 self._fields = client.get_objects(
-                    f'{self._path}/{self._name}/boards/{self._boardid}/securities/columns',
+                    f'{self._path}/boards/{self._boardid}/securities/columns',
                     lambda data: result_deserializer(data, key=lambda item: item['name']))
 
                 self._values = client.get_objects(
-                    f'{self._path}/{self._name}/boards/{self._boardid}/securities/',
+                    f'{self._path}/boards/{self._boardid}/securities/',
                     lambda data: result_deserializer(data, key=lambda item: item['SECID']))
 
     def _is_delisted(self, secid: str, cs: Session = None):
-        self._ensure_loaded(cs)
-        if self._delisted is None:
-            market = self._name
-            engine = self._path.split('/')[1]
-            "&group_by=type&group_by_filter=preferred_share&iss.only=securities&securities.columns=secid"
-            with Session(cs or session.default) as client:
-                data = data_gen(cs, f'securities/',
-                                {'engine': engine, 'market': market, 'is_trading': 0,
-                                 'iss.only': 'securities', 'securities.columns': 'secid'},
-                                0, 10000, 'securities')
-                self._delisted = [row['secid'] for row in data]
-        return secid in self._delisted
+        raise NotImplementedError("Deprecated")
+        # self._ensure_loaded(cs)
+        # if self._delisted is None:
+        #     market = self._name
+        #     engine = self._path.split('/')[1]
+        #     "&group_by=type&group_by_filter=preferred_share&iss.only=securities&securities.columns=secid"
+        #     with Session(cs or session.default) as client:
+        #         data = data_gen(cs, f'securities/',
+        #                         {'engine': engine, 'market': market, 'is_trading': 0,
+        #                          'iss.only': 'securities', 'securities.columns': 'secid'},
+        #                         0, 10000, 'securities')
+        #         self._delisted = [row['secid'] for row in data]
+        # return secid in self._delisted
 
     def _ticker_info(self, secid: str, cs: Session = None) -> dict[str, dict[str, dict]]:
         """
@@ -241,13 +236,14 @@ class Market:
         return : Dict[str, Any]
             Информация о заданном инструменте.
         """
-        self._ensure_loaded(cs)
-        marketdata = self._values['marketdata'].get(secid)
-        securities = self._values['securities'].get(secid)
-        if securities or marketdata:
-            return dict(securities=securities, marketdata=marketdata)
-        if self._is_delisted(secid):
-            return dict(securities=None, marketdata=None)
+        raise NotImplementedError("Deprecated")
+        # self._ensure_loaded(cs)
+        # marketdata = self._values['marketdata'].get(secid)
+        # securities = self._values['securities'].get(secid)
+        # if securities or marketdata:
+        #     return dict(securities=securities, marketdata=marketdata)
+        # if self._is_delisted(secid):
+        #     return dict(securities=None, marketdata=None)
 
     def _normalize_row(self, row: dict[str, dict], fields: tuple[str]) -> dict[str, dict]:
         """
@@ -382,7 +378,8 @@ class Market:
                         latest: bool = None,
                         offset: int = None,
                         cs: Session = None,
-                        use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+                        use_dataframe: bool = True,
+                        limit: int = None) -> Union[iter, pd.DataFrame]:
         """
         Подготавливает запрос к рынку по заданным параметрам.
 
@@ -414,7 +411,8 @@ class Market:
             cs,
             date_=date,
             latest=latest,
-            offset=offset
+            offset=offset,
+            limit=limit or 50_000
         )
         return pandas_frame(metrics_it) if use_dataframe else dataclass_it(metrics_it)
 
@@ -571,7 +569,7 @@ class Market:
         NotImplementedError
             Вызывается, если `FUTOI` не поддерживается для данного рынка.
         """
-        if self._path != 'engines/futures/markets':
+        if not self._path.startswith('engines/futures/markets'):
             raise NotImplementedError("FUTOI is not implemented for this market")
 
         return self._prepare_metric(
@@ -581,5 +579,47 @@ class Market:
             latest=None,
             offset=None,
             cs=cs,
-            use_dataframe=use_dataframe
+            use_dataframe=use_dataframe,
+            limit=-1
+        )
+
+    def alerts(self,
+                *,
+                date: Union[str, date] = None,
+                latest: bool = None,
+                offset: int = None,
+                cs: Session = None,
+                use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+        """
+        Возвращает MegaAlert (оповещение об аномальной рыночной активности) по заданным параметрам.
+
+        Parameters
+        ----------
+        date : Union[str, date], optional
+            Дата данных. Если не указано, данные выдаются за сегодняшнее число.
+        latest : bool, optional
+            Включает режим выдачи последних записей в наборе.
+        offset : int, optional
+            Начальная позиция в последовательности записей.
+        cs : Session, optional
+            Клиентская сессия, если используется.
+        use_dataframe : bool, optional
+            Изменяет тип возвращаемого объекта, by default `True`.
+            Если `True`, то возвращает `pd.DataFrame`, иначе итератор.
+
+        Returns
+        -------
+        return : Union[iter, pd.DataFrame]
+            Итератор или `pd.DataFrame`.
+        """
+        if not self._path.startswith('engines/stock/markets'):
+            raise NotImplementedError
+        return self._prepare_metric(
+            'alerts',
+            self._pref,
+            date,
+            latest,
+            offset,
+            cs,
+            use_dataframe
         )
