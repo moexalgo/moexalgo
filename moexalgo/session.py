@@ -103,7 +103,8 @@ class Client(HasOptions):
         -------
         return : None
         """
-        options['follow_redirects'] = True
+        options.update(follow_redirects = True,
+                       headers = [('User-Agent', 'python-httpx/moexalgo')])
         super().__init__(**options)
         self.httpx_cli = httpx.Client(**self.options) if sync else httpx.AsyncClient(**self.options)
 
