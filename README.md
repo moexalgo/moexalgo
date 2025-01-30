@@ -48,18 +48,6 @@
 Для работы с библиотекой необходимо оформить подписку на https://data.moex.com/products/algopack и получить токен в личном кабинете
 
 ```python
-from moexalgo import session
-
-username = "<email>"
-password = "<password>"
-
-session.authorize(username, password)
-
-```
-
-Чтобы получить доступ к полному набору данных, необходимо оформить бесплатную подписку на [странице](https://www.moex.com/ru/analyticalproducts?futoi) 
-
-```python
 from moexalgo import Ticker, session
 session.TOKEN = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiS...lM_-n_l1LsSRX55A'
 
