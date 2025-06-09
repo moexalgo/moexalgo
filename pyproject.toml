@@ -13,7 +13,7 @@ write_to = "moexalgo/__version__.py"
 name = "moexalgo"
 description = "Python lib for MOEX AlgoPack data"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -30,8 +30,8 @@ dependencies = [
 
 [project.optional-dependencies]
 pandas = [
-    "pandas==1.4.1",
-    "numpy==1.26.4"
+    "pandas>=1.4.1",
+    "numpy>=1.26.4"
 ]
 
 issplus = [

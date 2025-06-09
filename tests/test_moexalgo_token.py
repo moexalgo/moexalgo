@@ -1,8 +1,5 @@
 import pytest
 from datetime import date, timedelta
-
-from numpy.distutils.lib2def import DATA_RE
-
 from moexalgo import session, Stock, Market, Futures
 
 today = date.today()

@@ -46,13 +46,13 @@ class HasOptions:
         return : None
         """
         global TOKEN
-        base_url = base_url or BASE_URL
         if TOKEN:
-            base_url = TOKEN_URL
             if 'headers' not in options:
                 options['headers'] = []
-            if not [name for name, _ in options['headers'] if name=='Authorization']:
+            if not [name for name, _ in options['headers'] if name == 'Authorization']:
                 options['headers'].append(('Authorization', f'Bearer {TOKEN}'))
+        if not base_url:
+            base_url = TOKEN_URL if TOKEN else BASE_URL
         if base_url.startswith('http:') and USE_HTTPS:
             base_url = base_url.replace('http:', 'https:')
         elif base_url.startswith('https:') and not USE_HTTPS:
@@ -76,19 +76,8 @@ class HasOptions:
         return self.__options
 
 
-class Client(HasOptions):
-    """
-    Клиент для работы с API.
-
-    Attributes
-    ----------
-    sync : bool
-        Синхронный режим работы.
-    authorized : bool
-        Авторизован ли клиент.
-    httpx_cli : httpx.Client | httpx.AsyncClient
-        Клиент для работы с HTTP.
-    """
+class BaseClient(HasOptions):
+    """ Base API client """
 
     def __init__(self, sync: bool = True, **options) -> None:
         """
@@ -98,13 +87,13 @@ class Client(HasOptions):
             Синхронный режим работы.
         options : dict
             Опционные параметры.
-        
+
         Returns
         -------
         return : None
         """
-        options.update(follow_redirects = True,
-                       headers = [('User-Agent', 'python-httpx/moexalgo')])
+        options.update(follow_redirects=True,
+                       headers=[('User-Agent', 'python-httpx/moexalgo')])
         super().__init__(**options)
         self.httpx_cli = httpx.Client(**self.options) if sync else httpx.AsyncClient(**self.options)
 
@@ -119,6 +108,21 @@ class Client(HasOptions):
             `True` если клиент синхронный, иначе `False`.
         """
         return isinstance(self.httpx_cli, httpx.Client)
+
+
+class Client(BaseClient):
+    """
+    Клиент для работы с API.
+
+    Attributes
+    ----------
+    sync : bool
+        Синхронный режим работы.
+    authorized : bool
+        Авторизован ли клиент.
+    httpx_cli : httpx.Client | httpx.AsyncClient
+        Клиент для работы с HTTP.
+    """
 
     @property
     def authorized(self) -> bool:
@@ -320,7 +324,7 @@ class Session(HasOptions):
         Клиент для работы с API.
     """
 
-    def __init__(self, cs: HasOptions = None, **options) -> None:
+    def __init__(self, cs: HasOptions = None, client_cls=Client, **options) -> None:
         """
         Parameters
         ----------
@@ -337,6 +341,7 @@ class Session(HasOptions):
         if cs is not None:
             options.update(cs.options)
         super().__init__(**options)
+        self._client_cls = client_cls
         self._client = None
 
     def __enter__(self) -> Client:
@@ -348,7 +353,7 @@ class Session(HasOptions):
         return : Client
             Клиент для работы с API.
         """
-        self._client = Client(True, **self.options)
+        self._client = self._client_cls(True, **self.options)
         self._client.httpx_cli.__enter__()
         return self._client
 

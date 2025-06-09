@@ -51,6 +51,13 @@ def test_futures_tradestats():
         AKM4.tradestats(start=None, end=None)
 
 
+def test_perpetual_futures():
+    sberf = Futures('SBERF')
+    it = sberf.tradestats(start=date(2025, 6, 4), end='2025-06-04', use_dataframe=False)
+    assert next(it)
+    assert next(it)
+
+
 def test_futures_obstats():
     AKM4 = Futures('AKM4', 'RFUD')
     AKM4.obstats(start=date(2024, 4, 22), end='2024-04-22')

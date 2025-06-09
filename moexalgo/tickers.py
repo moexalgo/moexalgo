@@ -15,6 +15,10 @@ from moexalgo.session import Session, data_gen
 from moexalgo.utils import pd, CandlePeriod
 
 
+PERPETUAL = (
+    'USDRUBF', 'EURRUBF', 'CNYRUBF', 'IMOEXF', 'GLDRUBF', 'SBERF', 'GAZPF'
+)
+
 class _Ticker:
     """
     Базовый класс для работы с инструментами.
@@ -341,7 +345,7 @@ class _Ticker:
             Вызывается, если `FUTOI` не поддерживается для данного рынка.
         """
         sectype = self._secid
-        if self._secid not in ('USDRUBF', 'EURRUBF', 'CNYRUBF'):
+        if self._secid not in PERPETUAL:
             sectype = self._secid[:2]
         metrics_it = prepare_market_request(
             f'fo/futoi/{sectype}',
