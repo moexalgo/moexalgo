@@ -10,6 +10,7 @@ from moexalgo.utils import pd
 
 @dataclass
 class FileInfo:
+    id: int
     dataset: str
     file_size: int
     filename: str
@@ -50,6 +51,14 @@ class FileData(t.List[t.Dict]):
         return self.df._repr_html_()
 
 
+@dataclass
+class DownloadInfo:
+    download_url: str
+    file_id: int
+    filename: str
+    success: bool
+
+
 class File:
 
     def __init__(self, content: bytes):
@@ -57,6 +66,9 @@ class File:
         with zipfile.ZipFile(self._stream, 'r') as zip_file:
             self.__content = [name for name in zip_file.namelist() if name.endswith('.csv')]
         self._stream.seek(0)
+
+    def __iter__(self):
+        return iter(self._select(self._content[0]))
 
     @property
     def df(self) -> pd.DataFrame:

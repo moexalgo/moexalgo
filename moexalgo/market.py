@@ -623,3 +623,42 @@ class Market:
             cs,
             use_dataframe
         )
+
+    def hi2(self,
+                *,
+                date: Union[str, date] = None,
+                latest: bool = None,
+                offset: int = None,
+                cs: Session = None,
+                use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+        """
+        Возвращает метрики `Hi2` (индекс рыночной концентрации) по заданным параметрам.
+
+        Parameters
+        ----------
+        date : Union[str, date], optional
+            Дата данных. Если не указано, данные выдаются за сегодняшнее число.
+        latest : bool, optional
+            Включает режим выдачи последних записей в наборе.
+        offset : int, optional
+            Начальная позиция в последовательности записей.
+        cs : Session, optional
+            Клиентская сессия, если используется.
+        use_dataframe : bool, optional
+            Изменяет тип возвращаемого объекта, by default `True`.
+            Если `True`, то возвращает `pd.DataFrame`, иначе итератор.
+
+        Returns
+        -------
+        return : Union[iter, pd.DataFrame]
+            Итератор или `pd.DataFrame`.
+        """
+        return self._prepare_metric(
+            'hi2',
+            self._pref,
+            date,
+            latest,
+            offset,
+            cs,
+            use_dataframe
+        )

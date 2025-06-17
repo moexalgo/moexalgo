@@ -1,7 +1,8 @@
 from moexalgo import session
 from moexalgo.ahdata.client import Client
-from moexalgo.ahdata.models import FileInfo, FileList, File
+from moexalgo.ahdata.models import FileInfo, FileList, File, DownloadInfo
 from moexalgo.session import HasOptions, Session
+from urllib.parse import urlparse, parse_qs
 
 URL = 'https://ahdata.ru'
 
@@ -22,4 +23,8 @@ def download(dataset: str, period: str):
     }
     with Session(HasOptions(base_url=URL), client_cls=Client) as client:
         data = client.get('/download', **params)
+        p = urlparse(data['download_url'])
+        url = p.scheme+'://'+p.hostname+p.path
+        params = parse_qs(p.query)
+        data = client.get(url, **params)
         return File(data)

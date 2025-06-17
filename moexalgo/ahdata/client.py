@@ -16,6 +16,8 @@ class Client(BaseClient):
     def get(self, path: str, **params: t.Any) -> t.Any:
 
         def _parse_response(resp: httpx.Response) -> t.Any:
+            if resp.url.raw_path == b'/error?message=Authentication+required+to+download+files':
+                resp = httpx.Response(401, request=resp.request)
             if not resp.is_success:
                 resp.raise_for_status()
             if resp.headers['content-type'].startswith('application/json'):
