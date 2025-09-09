@@ -114,7 +114,7 @@ def calc_offset_limit(offset: int = None,
         limit = limit or standart_limit
 
         limit = min_limit if limit < min_limit else max_limit if limit > max_limit else limit
-        offset = min_offset if offset < min_offset else max_limit - 1 if offset >= max_limit else offset
+        offset = min_offset if offset < min_offset else offset
 
     return offset, limit
 
