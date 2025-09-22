@@ -70,7 +70,7 @@ def prepare_request(cs: Session,
                     *,
                     from_date: Union[str, date] = None, 
                     till_date: Union[str, date] = None,
-                    period: Union[CandlePeriod, int, str] = None, 
+                    period: Union[CandlePeriod, int, str, timedelta] = None, 
                     offset: int = None, 
                     limit: int = None, 
                     latest: bool = False) -> Iterator[dict] | None:
