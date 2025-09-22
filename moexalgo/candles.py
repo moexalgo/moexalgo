@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Union, Iterator
 
 import pandas as pd
@@ -127,6 +127,22 @@ def prepare_request(cs: Session,
     
     if isinstance(period, CandlePeriod):
         interval_seconds = period.value
+    
+    elif isinstance(period, timedelta):
+        if period == timedelta(minutes=1):
+            interval_seconds = CandlePeriod.ONE_MINUTE.value
+        elif period == timedelta(minutes=10):
+            interval_seconds = CandlePeriod.TEN_MINUTES.value
+        elif period == timedelta(hours=1):
+            interval_seconds = CandlePeriod.ONE_HOUR.value
+        elif period == timedelta(days=1):
+            interval_seconds = CandlePeriod.ONE_DAY.value
+        elif period == timedelta(weeks=1):
+            interval_seconds = CandlePeriod.ONE_WEEK.value
+        elif period == timedelta(days=31):
+            interval_seconds = CandlePeriod.ONE_MONTH.value
+        else:
+            _raise_error()
     
     elif isinstance(period, int):
         if period == 1:
