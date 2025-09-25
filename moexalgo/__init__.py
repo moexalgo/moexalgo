@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Union
 
 from .tickers import _Ticker, _resolve_ticker
@@ -12,18 +11,30 @@ except ImportError:
 
 from .requests import get_secid_info_and_boards
 
-from .market import Market
+from .next import Market as NewMarket, Ticker as NewTicker, protocols
+from .market import Market as OldMarket
 from .tickers import _Ticker
 from .stocks import Stock
 from .indices import Index
 from .currency import Currency
 from .futures import Futures
 from .utils import CandlePeriod
+from .tools import resample
 
-AnyTickers = Union['Stock', 'Index', 'Currency', 'Futures']
+AnyTickers = Union["Stock", "Index", "Currency", "Futures"]
 
 
-def Ticker(secid: str, boardid: str = None) -> AnyTickers:
+def Market(secid: str, boardid: str = None) -> OldMarket | protocols.Market:
+    """
+    Получение объекта определяющего раздел финансового рынка.
+    """
+    try:
+        return OldMarket(secid, boardid)
+    except NotImplementedError:
+        return NewMarket(secid, boardid)
+
+
+def Ticker(secid: str, boardid: str = None) -> AnyTickers | protocols.Ticker:
     """
     Получение объекта финансового инструмента по тикеру и типу рынка.
 
@@ -66,6 +77,7 @@ def Ticker(secid: str, boardid: str = None) -> AnyTickers:
     if info := _resolve_ticker(secid, boardid):
         secid, boardid, market, engine, *args = info
         allowed_tickers = dict((item._PATH, item) for item in [Currency, Futures, Index, Stock])
-        if allowed_ticker := allowed_tickers.get(f'engines/{engine}/markets/{market}'):
+        if allowed_ticker := allowed_tickers.get(f"engines/{engine}/markets/{market}"):
             return allowed_ticker(*info)
-    raise LookupError(f"Cannot found ticker: `{secid}`")
+
+    return NewTicker(secid, boardid)

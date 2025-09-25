@@ -16,10 +16,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Programming Language :: Python",
-  "License :: OSI Approved :: Apache Software License",
-  "Intended Audience :: Financial and Insurance Industry"
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Financial and Insurance Industry"
 ]
 
 dynamic = ["version"]
@@ -46,3 +46,6 @@ addopts = "-ra -q"
 testpaths = [
     "tests",
 ]
+
+[tool.black]
+line_length = 119

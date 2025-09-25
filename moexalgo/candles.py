@@ -63,7 +63,61 @@ def dataclass_it(candles_it: iter) -> iter[Candle]:
         yield Candle(**candle)
 
 
-def prepare_request(cs: Session, 
+def normalize_period(period: CandlePeriod | int | str) -> int:
+    def _raise_error() -> None:
+        """
+        Вызов ошибки.
+
+        Raises
+        ------
+        ValueError
+            Ошибка о неправильном параметре `period`.
+        """
+        raise ValueError("Неправильный параметр `period`")
+
+    if isinstance(period, CandlePeriod):
+        interval_seconds = period.value
+
+    elif isinstance(period, int):
+        if period == 1:
+            interval_seconds = CandlePeriod.ONE_MINUTE.value
+        elif period == 10:
+            interval_seconds = CandlePeriod.TEN_MINUTES.value
+        elif period == 60:
+            interval_seconds = CandlePeriod.ONE_HOUR.value
+        elif period == 24:
+            interval_seconds = CandlePeriod.ONE_DAY.value
+        elif period == 7:
+            interval_seconds = CandlePeriod.ONE_WEEK.value
+        elif period == 31:
+            interval_seconds = CandlePeriod.ONE_MONTH.value
+        else:
+            _raise_error()
+
+    elif isinstance(period, str):
+        if period == '1min':
+            interval_seconds = CandlePeriod.ONE_MINUTE.value
+        elif period == '10min':
+            interval_seconds = CandlePeriod.TEN_MINUTES.value
+        elif period == '1h':
+            interval_seconds = CandlePeriod.ONE_HOUR.value
+        elif period == '1d':
+            interval_seconds = CandlePeriod.ONE_DAY.value
+        elif period == '1w':
+            interval_seconds = CandlePeriod.ONE_WEEK.value
+        elif period == '1m':
+            interval_seconds = CandlePeriod.ONE_MONTH.value
+        else:
+            _raise_error()
+
+    elif period is None:
+        interval_seconds = CandlePeriod.TEN_MINUTES.value
+    else:
+        raise TypeError("Неверный тип для `period`")
+    return interval_seconds
+
+
+def prepare_request(cs: Session,
                     path: str, 
                     boardid: str, 
                     secid: str, 
@@ -113,59 +167,8 @@ def prepare_request(cs: Session,
     TypeError
         Неверный тип для `period`.
     """
-    
-    def _raise_error() -> None:
-        """
-        Вызов ошибки.
 
-        Raises
-        ------
-        ValueError
-            Ошибка о неправильном параметре `period`.
-        """
-        raise ValueError("Неправильный параметр `period`")
-    
-    if isinstance(period, CandlePeriod):
-        interval_seconds = period.value
-    
-    elif isinstance(period, int):
-        if period == 1:
-            interval_seconds = CandlePeriod.ONE_MINUTE.value
-        elif period == 10:
-            interval_seconds = CandlePeriod.TEN_MINUTES.value
-        elif period == 60:
-            interval_seconds = CandlePeriod.ONE_HOUR.value
-        elif period == 24:
-            interval_seconds = CandlePeriod.ONE_DAY.value
-        elif period == 7:
-            interval_seconds = CandlePeriod.ONE_WEEK.value
-        elif period == 31:
-            interval_seconds = CandlePeriod.ONE_MONTH.value
-        else:
-            _raise_error()
-    
-    elif isinstance(period, str):
-        if period == '1min':
-            interval_seconds = CandlePeriod.ONE_MINUTE.value
-        elif period == '10min':
-            interval_seconds = CandlePeriod.TEN_MINUTES.value
-        elif period == '1h':
-            interval_seconds = CandlePeriod.ONE_HOUR.value
-        elif period == '1d':
-            interval_seconds = CandlePeriod.ONE_DAY.value
-        elif period == '1w':
-            interval_seconds = CandlePeriod.ONE_WEEK.value
-        elif period == '1m':
-            interval_seconds = CandlePeriod.ONE_MONTH.value
-        else:
-            _raise_error()
-
-    elif period is None:
-        interval_seconds = CandlePeriod.TEN_MINUTES.value
-    
-    else:
-        raise TypeError("Неверный тип для `period`")
-
+    interval_seconds = normalize_period(period)
     from_date, till_date = prepare_from_till_dates(from_date, till_date)
     
     options = {

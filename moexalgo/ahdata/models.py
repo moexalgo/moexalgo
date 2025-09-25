@@ -62,27 +62,31 @@ class DownloadInfo:
 class File:
 
     def __init__(self, content: bytes):
+        self.__data = None
         self._stream = BytesIO(content)
         with zipfile.ZipFile(self._stream, 'r') as zip_file:
             self.__content = [name for name in zip_file.namelist() if name.endswith('.csv')]
         self._stream.seek(0)
 
     def __iter__(self):
-        return iter(self._select(self._content[0]))
+        return iter(self._data)
 
     @property
     def df(self) -> pd.DataFrame:
         """ Dataframe representation of this object. """
-        return self._select(self._content[0]).df
+        return self._data.df
+
+    @property
+    def _data(self) -> FileData:
+        if self.__data is None:
+            self.__data = self._select(self._content[0])
+        return self.__data
 
     @property
     def _content(self) -> FileContent:
         if not self.__content:
             raise ValueError('No csv files found in zip file')
         return FileContent(self.__content)
-
-    def _repr_html_(self):
-        return self.df._repr_html_()
 
     def _select(self, csv_file: str) -> FileData:
         with zipfile.ZipFile(self._stream, 'r') as zip_file:

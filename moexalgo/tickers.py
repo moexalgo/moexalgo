@@ -1,23 +1,21 @@
 from __future__ import annotations
-import typing as t
 
-from datetime import date, datetime
 import re
-from typing import Union
+import typing as t
 import weakref
+from datetime import date, datetime
+from typing import Union
 
 from moexalgo import trades
-from moexalgo.requests import get_secid_info_and_boards
 from moexalgo.candles import Candle, prepare_request, pandas_frame, dataclass_it
 from moexalgo.market import Market
 from moexalgo.metrics import prepare_market_request, dataclass_it as dict_it
+from moexalgo.requests import get_secid_info_and_boards
 from moexalgo.session import Session, data_gen
 from moexalgo.utils import pd, CandlePeriod
 
+PERPETUAL = ("USDRUBF", "EURRUBF", "CNYRUBF", "IMOEXF", "GLDRUBF", "SBERF", "GAZPF")
 
-PERPETUAL = (
-    'USDRUBF', 'EURRUBF', 'CNYRUBF', 'IMOEXF', 'GLDRUBF', 'SBERF', 'GAZPF'
-)
 
 class _Ticker:
     """
@@ -48,7 +46,7 @@ class _Ticker:
     Example
     -------
     .. code-block:: python
-    
+
         # Получение информации об акции
         >>> from moexalgo import tickers
         >>> ticker = tickers.get('SBER')
@@ -60,11 +58,11 @@ class _Ticker:
         >>> print(info)
 
             # Получение рыночной информации и статистики об инструменте
-        >>> marketdata = ticker.marketdata()
+        >>> marketdata = ticker._marketdata()
         >>> print(marketdata)
 
             # Получение свечей инструмента по заданным параметрам
-        >>> candles = ticker.candles(start='2021-01-01', end='2021-01-10')
+        >>> candles = ticker._candles(start='2021-01-01', end='2021-01-10')
         >>> for candle in candles:
         ...     print(candle)
 
@@ -73,7 +71,7 @@ class _Ticker:
         >>> print(orderbook)
     """
 
-    _PATH = 'Основная часть пути к API, должна быть определена в суперклассах'
+    _PATH = "Основная часть пути к API, должна быть определена в суперклассах"
 
     _secid: str
     _boardid: str
@@ -81,8 +79,15 @@ class _Ticker:
     _sec_info: dict[str, t.Any] = dict()
     _board_info: dict[str, t.Any] = dict()
 
-    def __new__(cls, secid: str, boardid: str = None, market: str = None,
-                engine: str = None, description: dict = None, board_info: dict = None) -> _Ticker:
+    def __new__(
+        cls,
+        secid: str,
+        boardid: str = None,
+        market: str = None,
+        engine: str = None,
+        description: dict = None,
+        board_info: dict = None,
+    ) -> _Ticker:
         """
         Создает новый объект инструмента.
 
@@ -117,7 +122,7 @@ class _Ticker:
 
     @property
     def delisted(self) -> bool:
-        return not self._board_info['listed_from'] <= datetime.now().date() <= self._board_info['listed_till']
+        return not self._board_info["listed_from"] <= datetime.now().date() <= self._board_info["listed_till"]
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self._secid}/{self._boardid}')"
@@ -156,19 +161,19 @@ class _Ticker:
 
             if info := self._market._ticker_info(self._secid):
 
-                if securities := info.get('securities'):
+                if securities := info.get("securities"):
 
                     if not fields:
-                        fields = tuple(self._market._fields['securities'].keys())
-                    
-                    exclude_fields = ('STATUS', 'LATNAME', 'CURRENCYID', 'SECTYPE')
+                        fields = tuple(self._market._fields["securities"].keys())
+
+                    exclude_fields = ("STATUS", "LATNAME", "CURRENCYID", "SECTYPE")
                     fields = tuple(filter(lambda f: f not in exclude_fields, fields))
                     securities = list(filter(lambda x: x[0] in fields, securities.items()))
 
                     if use_dataframe:
                         index, value = zip(*securities)
                         return pd.DataFrame(dict(value=value), index=index)
-                    
+
                     else:
                         return dict(securities)
 
@@ -194,13 +199,13 @@ class _Ticker:
 
             if info := self._market._ticker_info(self._secid):
 
-                if securities := info.get('marketdata'):
+                if securities := info.get("marketdata"):
 
                     if not fields:
-                        fields = tuple(self._market._fields['marketdata'].keys())
-                    
-                    titles = self._market._fields['marketdata']
-                    securities = [(name, titles[name]['title'], value) for (name, value) in securities.items()]
+                        fields = tuple(self._market._fields["marketdata"].keys())
+
+                    titles = self._market._fields["marketdata"]
+                    securities = [(name, titles[name]["title"], value) for (name, value) in securities.items()]
                     securities = list(filter(lambda x: x[0] in fields, securities))
 
                     index, title, value = zip(*securities)
@@ -209,15 +214,17 @@ class _Ticker:
                     else:
                         return dict(zip(index, value))
 
-    def candles(self, 
-                *, 
-                start: Union[str, date], 
-                end: Union[str, date],
-                period: Union[str, int, CandlePeriod] = None, 
-                offset: int = 0,
-                cs: Session = None, 
-                latest: bool = False, 
-                use_dataframe: bool = True) -> Union[iter[Candle], pd.DataFrame]:
+    def candles(
+        self,
+        *,
+        start: Union[str, date],
+        end: Union[str, date],
+        period: Union[str, int, CandlePeriod] = None,
+        offset: int = 0,
+        cs: Session = None,
+        latest: bool = False,
+        use_dataframe: bool = True,
+    ) -> Union[iter[Candle], pd.DataFrame]:
         """
         Возвращает итератор свечей инструмента по заданным параметрам.
 
@@ -245,7 +252,7 @@ class _Ticker:
             - '1d' - 1 день
             - '1w' - 1 неделя
             - '1m' - 1 месяц
-        
+
         offset : int, optional
             Начальная позиция в последовательности записей, by default 0.
         cs : Session, optional
@@ -263,15 +270,15 @@ class _Ticker:
         """
 
         candles_it = prepare_request(
-            cs, 
-            self._PATH, 
-            self._boardid, 
-            self._secid, 
+            cs,
+            self._PATH,
+            self._boardid,
+            self._secid,
             period=period,
-            from_date=start, 
-            till_date=end, 
+            from_date=start,
+            till_date=end,
             offset=offset,
-            latest=latest
+            latest=latest,
         )
         return pandas_frame(candles_it) if use_dataframe else dataclass_it(candles_it)
 
@@ -292,28 +299,21 @@ class _Ticker:
         return : Union[iter, pd.DataFrame]
             Стакан лучших цен.
         """
-        if self._PATH.startswith('engines/currency/markets'):
+        if self._PATH.startswith("engines/currency/markets"):
             raise NotImplementedError("OrderBook is not implemented for currencies")
-        path = f'{self._PATH}/boards/{self._boardid}/securities/{self._secid}/orderbook'
-        orderbook_it = data_gen(
-            cs=cs, 
-            path=path, 
-            options={}, 
-            offset=0, 
-            limit=-1,
-            section='orderbook'
-        )
+        path = f"{self._PATH}/boards/{self._boardid}/securities/{self._secid}/orderbook"
+        orderbook_it = data_gen(cs=cs, path=path, options={}, offset=0, limit=-1, section="orderbook")
         return pandas_frame(orderbook_it) if use_dataframe else dataclass_it(orderbook_it)
 
     def futoi(
-            self,
-            *,
-            start: Union[str, date],
-            end: Union[str, date],
-            # latest: bool = None,
-            # offset: int = None,
-            cs: Session = None,
-            use_dataframe: bool = True
+        self,
+        *,
+        start: Union[str, date],
+        end: Union[str, date],
+        # latest: bool = None,
+        # offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
     ) -> Union[iter, pd.DataFrame]:
         """
         Возвращает метрики `FUTOI` по заданным параметрам.
@@ -348,33 +348,31 @@ class _Ticker:
         if self._secid not in PERPETUAL:
             sectype = self._secid[:2]
         metrics_it = prepare_market_request(
-            f'fo/futoi/{sectype}',
+            f"fo/futoi/{sectype}",
             cs,
             secid=self._secid,
             start=start,
             end=end,
             # latest=latest,
             # offset=offset,
-            limit=-1
+            limit=-1,
         )
         return pandas_frame(metrics_it) if use_dataframe else dict_it(metrics_it)
 
     @classmethod
     def _get_sec_info(cls, secid: str):
         if secid not in cls._sec_info:
-            rv = data_gen(None, f'securities/{secid}', {}, 0, 100, section='boards')
-            if found := [info for info in rv if info['is_primary'] == 1]:
+            rv = data_gen(None, f"securities/{secid}", {}, 0, 100, section="boards")
+            if found := [info for info in rv if info["is_primary"] == 1]:
                 cls._sec_info[secid] = found[0]
         try:
             return cls._sec_info[secid]
         except KeyError:
             raise LookupError(f"Cannot found ticker: `{secid}`")
 
-    def trades(self,
-                *,
-                tradeno: int = None,
-                cs: Session = None,
-                use_dataframe: bool = True) -> Union[iter[dict], pd.DataFrame]:
+    def trades(
+        self, *, tradeno: int = None, cs: Session = None, use_dataframe: bool = True
+    ) -> Union[iter[dict], pd.DataFrame]:
         """
         Возвращает итератор сделок за последний день или начиная с заданного `tradeno`.
 
@@ -394,27 +392,25 @@ class _Ticker:
             Итератор сделок.
         """
 
-        trades_it = trades.prepare_request(
-            cs,
-            self._PATH,
-            self._boardid,
-            self._secid,
-            tradeno=tradeno
-        )
+        trades_it = trades.prepare_request(cs, self._PATH, self._boardid, self._secid, tradeno=tradeno)
         return pandas_frame(trades_it) if use_dataframe else trades.dataclass_it(trades_it)
 
-def _resolve_ticker(secid: str, boardid: str = None) -> tuple[str, str, str, str, dict, dict]:
+
+def _resolve_ticker(secid: str, boardid: str = None) -> tuple[str, str, str, str, dict, dict] | None:
     if boardid is None:
-        secid, *args = re.split('[^a-zA-Z0-9-]', secid)
+        secid, *args = re.split("[^a-zA-Z0-9-]", secid)
         if args:
             boardid = args[0]
-    description, boards = get_secid_info_and_boards(secid)
-    if found := [board for name, board in boards.items() if board['is_primary']]:
+    try:
+        description, boards = get_secid_info_and_boards(secid)
+    except KeyError:
+        return None
+    if found := [board for name, board in boards.items() if board["is_primary"]]:
         board_info = found[0]
         if boardid:
-            if boardid != board_info['boardid']:
+            if boardid != board_info["boardid"]:
                 raise ValueError("Wrong `boardid`")
-        boardid = board_info['boardid']
-        market = board_info['market']
-        engine = board_info['engine']
+        boardid = board_info["boardid"]
+        market = board_info["market"]
+        engine = board_info["engine"]
         return secid, boardid, market, engine, description, board_info

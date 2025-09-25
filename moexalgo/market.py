@@ -1,35 +1,32 @@
 from __future__ import annotations
 
-import re
 from datetime import date
 from typing import Optional, Union
 
 from moexalgo import session
 from moexalgo.metrics import prepare_market_request, dataclass_it, pandas_frame
-from moexalgo.session import Session, data_gen
+from moexalgo.session import Session
 from moexalgo.utils import result_deserializer, pd
 
 _AVAILABLE = {
-    'index': dict(),
-    'shares': dict(),
-    'selt': dict(),
-
-    'forts': dict()
+    "index": dict(),
+    "shares": dict(),
+    "selt": dict(),
+    "forts": dict(),
+    "bonds": dict(),
 }
 _ALIASES = {
-    'index': ('engines/stock/markets/index', 'SNDX'),
-    'shares': ('engines/stock/markets/shares', 'TQBR'),
-    'stock': ('engines/stock/markets/shares', 'TQBR'),
-    'stocks': ('engines/stock/markets/shares', 'TQBR'),
-    'EQ': ('engines/stock/markets/shares', 'TQBR'),
-
-    'selt': ('engines/currency/markets/selt', 'CETS'),
-    'FX': ('engines/currency/markets/selt', 'CETS'),
-    'currency': ('engines/currency/markets/selt', 'CETS'),
-
-    'forts': ('engines/futures/markets/forts', 'RFUD'),
-    'FO': ('engines/futures/markets/forts', 'RFUD'),
-    'futures': ('engines/futures/markets/forts', 'RFUD'),
+    "index": ("engines/stock/markets/index", "SNDX"),
+    "shares": ("engines/stock/markets/shares", "TQBR"),
+    "stock": ("engines/stock/markets/shares", "TQBR"),
+    "stocks": ("engines/stock/markets/shares", "TQBR"),
+    "EQ": ("engines/stock/markets/shares", "TQBR"),
+    "selt": ("engines/currency/markets/selt", "CETS"),
+    "FX": ("engines/currency/markets/selt", "CETS"),
+    "currency": ("engines/currency/markets/selt", "CETS"),
+    "forts": ("engines/futures/markets/forts", "RFUD"),
+    "FO": ("engines/futures/markets/forts", "RFUD"),
+    "futures": ("engines/futures/markets/forts", "RFUD"),
 }
 
 
@@ -78,22 +75,22 @@ class Market:
     -------
     tickers : Callable[[Session, bool], Union[List[Dict[str, Any]], pandas.DataFrame]]
         Возвращает список всех инструментов рынка.
-    
+
     marketdata : Callable[[Session, bool], Union[List[Dict[str, Any]], pandas.DataFrame]]
         Возвращает статистическую информацию о всех инструментах рынка.
-    
+
     tradestats : Callable[[Session, bool], Union[Iterator[TradeStat], pandas.DataFrame]]
         Возвращает метрики `TradeStat` по заданным параметрам.
-    
+
     orderstats : Callable[[Session, bool], Union[Iterator[OrderStat], pandas.DataFrame]]
         Возвращает метрики `OrderStat` по заданным параметрам.
-    
+
     obstats : Callable[[Session, bool], Union[Iterator[ObStat], pandas.DataFrame]]
         Возвращает метрики `ObStat` по заданным параметрам.
-    
+
     futoi : Callable[[Session, bool], Union[Iterator[FUTOI], pandas.DataFrame]]
         Возвращает метрики `FUTOI` по заданным параметрам.
-    
+
     Returns
     -------
     return : Market
@@ -116,6 +113,7 @@ class Market:
         >>> except NotImplementedError:
         >>>     print("Рынок не поддерживается.")
     """
+
     _name: str
     _path: str
     _pref: str
@@ -136,12 +134,12 @@ class Market:
         boardid : str, optional
             Идентификатор рынка, указывающий на специфическую торговую площадку или сегмент рынка.
             Если не указан, класс попытается автоматически определить идентификатор на основе общих правил.
-        
+
         Returns
         -------
         return : Market
             Экземпляр класса Market, представляющий указанный рынок.
-        
+
         Raises
         ------
         NotImplementedError
@@ -150,18 +148,20 @@ class Market:
         Example
         -------
         .. code-block:: python
-        
+
             # Получение информации об акции
             >>> market_instance = Market("index", "MOEX")
             >>> print(market_instance)
         """
-        if '/' not in name:
+        if "/" not in name:
             path, default_boardid = _ALIASES.get(name, (None, None))
+            if path is None:
+                raise NotImplementedError(f"Market '{name}' is not implemented.")
             boardid = boardid or default_boardid
-            name = path.split('/')[-1]
+            name = path.split("/")[-1]
         else:
             path = name
-            name = name.split('/')[-1]
+            name = name.split("/")[-1]
 
         if name not in _AVAILABLE:
             raise NotImplementedError(f"Market {name} is not supported")
@@ -198,12 +198,14 @@ class Market:
         if self._fields is None or self._values is None:
             with Session(cs or session.default) as client:
                 self._fields = client.get_objects(
-                    f'{self._path}/boards/{self._boardid}/securities/columns',
-                    lambda data: result_deserializer(data, key=lambda item: item['name']))
+                    f"{self._path}/boards/{self._boardid}/securities/columns",
+                    lambda data: result_deserializer(data, key=lambda item: item["name"]),
+                )
 
                 self._values = client.get_objects(
-                    f'{self._path}/boards/{self._boardid}/securities/',
-                    lambda data: result_deserializer(data, key=lambda item: item['SECID']))
+                    f"{self._path}/boards/{self._boardid}/securities/",
+                    lambda data: result_deserializer(data, key=lambda item: item["SECID"]),
+                )
 
     def _is_delisted(self, secid: str, cs: Session = None):
         raise NotImplementedError("Deprecated")
@@ -261,16 +263,11 @@ class Market:
         return : Dict[str, Any]
             Нормализованная строка данных о статистике инструмента.
         """
-        return dict(
-            ticker=row['SECID'],
-            **{key.lower(): value for key, value in row.items() if key in fields}
-        )
+        return dict(ticker=row["SECID"], **{key.lower(): value for key, value in row.items() if key in fields})
 
-    def _get_data(self,
-                  option: str,
-                  cs: Session = None,
-                  use_dataframe: bool = True,
-                  fields: tuple[str] = None) -> Union[list[dict], pd.DataFrame]:
+    def _get_data(
+        self, option: str, cs: Session = None, use_dataframe: bool = True, fields: tuple[str] = None
+    ) -> Union[list[dict], pd.DataFrame]:
         """
         Возвращает данные о рынке по заданному параметру.
 
@@ -285,7 +282,7 @@ class Market:
             Если `True`, то возвращает `pd.DataFrame`, иначе список.
         fields : Tuple[str], optional
             Поля, которые необходимо оставить в строке данных.
-        
+
         Returns
         -------
         return : Union[list[dict], pd.DataFrame]
@@ -293,9 +290,7 @@ class Market:
         """
         self._ensure_loaded(cs)
         if use_dataframe:
-            return pd.DataFrame(
-                [self._normalize_row(row, fields) for row in self._values[option].values()]
-            )
+            return pd.DataFrame([self._normalize_row(row, fields) for row in self._values[option].values()])
         else:
             return list(self._values[option].values())
 
@@ -310,27 +305,27 @@ class Market:
         use_dataframe : bool, optional
             Изменяет тип возвращаемого объекта, by default `True`.
             Если `True`, то возвращает `pd.DataFrame`, иначе список.
-        
+
         Returns
         -------
         return : Union[list[dict], pd.DataFrame]
             Объекты типа List или `pd.DataFrame`.
         """
         fields = (
-            'SHORTNAME',  # Краткое наименование
-            'LOTSIZE',  # Размер лота
-            'DECIMALS',  # Количество знаков после запятой
-            'MINSTEP',  # Минимальный шаг цены
-            'ISSUESIZE',  # Объем выпуска
-            'ISIN',  # Стандартное наименование
-            'REGNUMBER',  # Регистрационный номер
-            'LISTLEVEL'  # Уровень листинга
+            "SHORTNAME",  # Краткое наименование
+            "LOTSIZE",  # Размер лота
+            "DECIMALS",  # Количество знаков после запятой
+            "MINSTEP",  # Минимальный шаг цены
+            "ISSUESIZE",  # Объем выпуска
+            "ISIN",  # Стандартное наименование
+            "REGNUMBER",  # Регистрационный номер
+            "LISTLEVEL",  # Уровень листинга
         )
 
-        return self._get_data('securities', cs, use_dataframe, fields)
+        return self._get_data("securities", cs, use_dataframe, fields)
 
     def marketdata(self, cs: Session = None, use_dataframe: bool = True) -> Union[list[dict], pd.DataFrame]:
-        """ 
+        """
         Возвращает статистическую информацию о всех инструментах рынка.
 
         Parameters
@@ -347,39 +342,41 @@ class Market:
             Объекты типа List или `pd.DataFrame`.
         """
         fields = (
-            'BID',  # Лучшая цена покупки
-            'OFFER',  # Лучшая цена продажи
-            'BIDDEPTHT',  # Глубина стакана покупки
-            'OFFERDEPTHT',  # Глубина стакана продажи
-            'OPEN',  # Цена открытия
-            'HIGH',  # Максимальная цена
-            'LOW',  # Минимальная цена
-            'LAST',  # Цена последней сделки
-            'WAPRICE',  # Средневзвешенная цена
-            'LASTTOPREVPRICE',  # Изменение цены последней сделки к предыдущей
-            'NUMTRADES',  # Количество сделок
-            'VOLTODAY',  # Объем сделок за день
-            'VALTODAY',  # Объем сделок за день в валюте
-            'VALTODAY_USD',  # Объем сделок за день в долларах
-            'OPENPERIODPRICE',  # Цена открытия периода
-            'CLOSINGAUCTIONPRICE',  # Цена закрытия аукциона
-            'CLOSINGAUCTIONVOLUME',  # Объем закрытия аукциона
-            'ISSUECAPITALIZATION',  # Капитализация
-            'UPDATETIME',  # Время обновления
-            'SYSTIME'  # Время системы
+            "BID",  # Лучшая цена покупки
+            "OFFER",  # Лучшая цена продажи
+            "BIDDEPTHT",  # Глубина стакана покупки
+            "OFFERDEPTHT",  # Глубина стакана продажи
+            "OPEN",  # Цена открытия
+            "HIGH",  # Максимальная цена
+            "LOW",  # Минимальная цена
+            "LAST",  # Цена последней сделки
+            "WAPRICE",  # Средневзвешенная цена
+            "LASTTOPREVPRICE",  # Изменение цены последней сделки к предыдущей
+            "NUMTRADES",  # Количество сделок
+            "VOLTODAY",  # Объем сделок за день
+            "VALTODAY",  # Объем сделок за день в валюте
+            "VALTODAY_USD",  # Объем сделок за день в долларах
+            "OPENPERIODPRICE",  # Цена открытия периода
+            "CLOSINGAUCTIONPRICE",  # Цена закрытия аукциона
+            "CLOSINGAUCTIONVOLUME",  # Объем закрытия аукциона
+            "ISSUECAPITALIZATION",  # Капитализация
+            "UPDATETIME",  # Время обновления
+            "SYSTIME",  # Время системы
         )
 
-        return self._get_data('marketdata', cs, use_dataframe, fields)
+        return self._get_data("marketdata", cs, use_dataframe, fields)
 
-    def _prepare_metric(self,
-                        metric: str,
-                        metric_type: str = None,
-                        date: Union[str, date] = None,
-                        latest: bool = None,
-                        offset: int = None,
-                        cs: Session = None,
-                        use_dataframe: bool = True,
-                        limit: int = None) -> Union[iter, pd.DataFrame]:
+    def _prepare_metric(
+        self,
+        metric: str,
+        metric_type: str = None,
+        date: Union[str, date] = None,
+        latest: bool = None,
+        offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
+        limit: int = None,
+    ) -> Union[iter, pd.DataFrame]:
         """
         Подготавливает запрос к рынку по заданным параметрам.
 
@@ -407,23 +404,20 @@ class Market:
             Итератор или `pd.DataFrame` метрик.
         """
         metrics_it = prepare_market_request(
-            f'{metric_type}/{metric}',
-            cs,
-            date_=date,
-            latest=latest,
-            offset=offset,
-            limit=limit or 50_000
+            f"{metric_type}/{metric}", cs, date_=date, latest=latest, offset=offset, limit=limit or 50_000
         )
         return pandas_frame(metrics_it) if use_dataframe else dataclass_it(metrics_it)
 
-    def tradestats(self,
-                   *,
-                   date: Union[str, date] = None,
-                   latest: bool = None,
-                   offset: int = None,
-                   cs: Session = None,
-                   use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
-        """ 
+    def tradestats(
+        self,
+        *,
+        date: Union[str, date] = None,
+        latest: bool = None,
+        offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
+    ) -> Union[iter, pd.DataFrame]:
+        """
         Возвращает метрики `TradeStat` по заданным параметрам.
 
         Parameters
@@ -446,23 +440,17 @@ class Market:
             Итератор или pd.DataFrame метрик `TradeStat`.
         """
 
-        return self._prepare_metric(
-            'tradestats',
-            self._pref,
-            date,
-            latest,
-            offset,
-            cs,
-            use_dataframe
-        )
+        return self._prepare_metric("tradestats", self._pref, date, latest, offset, cs, use_dataframe)
 
-    def orderstats(self,
-                   *,
-                   date: Union[str, date] = None,
-                   latest: bool = None,
-                   offset: int = None,
-                   cs: Session = None,
-                   use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+    def orderstats(
+        self,
+        *,
+        date: Union[str, date] = None,
+        latest: bool = None,
+        offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
+    ) -> Union[iter, pd.DataFrame]:
         """
         Возвращает метрики `OrderStat` по заданным параметрам.
 
@@ -486,23 +474,17 @@ class Market:
             Итератор или pd.DataFrame метрик `OrderStat`.
         """
 
-        return self._prepare_metric(
-            'orderstats',
-            self._pref,
-            date,
-            latest,
-            offset,
-            cs,
-            use_dataframe
-        )
+        return self._prepare_metric("orderstats", self._pref, date, latest, offset, cs, use_dataframe)
 
-    def obstats(self,
-                *,
-                date: Union[str, date] = None,
-                latest: bool = None,
-                offset: int = None,
-                cs: Session = None,
-                use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+    def obstats(
+        self,
+        *,
+        date: Union[str, date] = None,
+        latest: bool = None,
+        offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
+    ) -> Union[iter, pd.DataFrame]:
         """
         Возвращает метрики `ObStat` по заданным параметрам.
 
@@ -525,23 +507,17 @@ class Market:
         return : Union[iter, pd.DataFrame]
             Итератор или `pd.DataFrame` метрик `ObStat`.
         """
-        return self._prepare_metric(
-            'obstats',
-            self._pref,
-            date,
-            latest,
-            offset,
-            cs,
-            use_dataframe
-        )
+        return self._prepare_metric("obstats", self._pref, date, latest, offset, cs, use_dataframe)
 
-    def futoi(self,
-              *,
-              date: Union[str, date] = None,
-              # latest: bool = None,
-              # offset: int = None,
-              cs: Session = None,
-              use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+    def futoi(
+        self,
+        *,
+        date: Union[str, date] = None,
+        # latest: bool = None,
+        # offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
+    ) -> Union[iter, pd.DataFrame]:
         """
         Возвращает метрики `FUTOI` по заданным параметрам.
 
@@ -569,27 +545,22 @@ class Market:
         NotImplementedError
             Вызывается, если `FUTOI` не поддерживается для данного рынка.
         """
-        if not self._path.startswith('engines/futures/markets'):
+        if not self._path.startswith("engines/futures/markets"):
             raise NotImplementedError("FUTOI is not implemented for this market")
 
         return self._prepare_metric(
-            'FUTOI',
-            self._pref,
-            date,
-            latest=None,
-            offset=None,
-            cs=cs,
-            use_dataframe=use_dataframe,
-            limit=-1
+            "FUTOI", self._pref, date, latest=None, offset=None, cs=cs, use_dataframe=use_dataframe, limit=-1
         )
 
-    def alerts(self,
-                *,
-                date: Union[str, date] = None,
-                latest: bool = None,
-                offset: int = None,
-                cs: Session = None,
-                use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+    def alerts(
+        self,
+        *,
+        date: Union[str, date] = None,
+        latest: bool = None,
+        offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
+    ) -> Union[iter, pd.DataFrame]:
         """
         Возвращает MegaAlert (оповещение об аномальной рыночной активности) по заданным параметрам.
 
@@ -612,25 +583,19 @@ class Market:
         return : Union[iter, pd.DataFrame]
             Итератор или `pd.DataFrame`.
         """
-        if not self._path.startswith('engines/stock/markets'):
+        if not self._path.startswith("engines/stock/markets"):
             raise NotImplementedError
-        return self._prepare_metric(
-            'alerts',
-            self._pref,
-            date,
-            latest,
-            offset,
-            cs,
-            use_dataframe
-        )
+        return self._prepare_metric("alerts", self._pref, date, latest, offset, cs, use_dataframe)
 
-    def hi2(self,
-                *,
-                date: Union[str, date] = None,
-                latest: bool = None,
-                offset: int = None,
-                cs: Session = None,
-                use_dataframe: bool = True) -> Union[iter, pd.DataFrame]:
+    def hi2(
+        self,
+        *,
+        date: Union[str, date] = None,
+        latest: bool = None,
+        offset: int = None,
+        cs: Session = None,
+        use_dataframe: bool = True,
+    ) -> Union[iter, pd.DataFrame]:
         """
         Возвращает метрики `Hi2` (индекс рыночной концентрации) по заданным параметрам.
 
@@ -653,12 +618,4 @@ class Market:
         return : Union[iter, pd.DataFrame]
             Итератор или `pd.DataFrame`.
         """
-        return self._prepare_metric(
-            'hi2',
-            self._pref,
-            date,
-            latest,
-            offset,
-            cs,
-            use_dataframe
-        )
+        return self._prepare_metric("hi2", self._pref, date, latest, offset, cs, use_dataframe)

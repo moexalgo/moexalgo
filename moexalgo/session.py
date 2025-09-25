@@ -240,7 +240,7 @@ class Client(BaseClient):
             """
             if not resp.is_success:
                 resp.raise_for_status()
-            if not resp.headers['content-type'].startswith('application/json'):
+            if not resp.headers.get('content-type','').startswith('application/json'):
                 resp.status_code = 403
                 resp.raise_for_status()
             if data := json.loads(resp.text):
@@ -337,7 +337,7 @@ class Session(HasOptions):
         -------
         return : None
         """
-        assert isinstance(cs, HasOptions) or len(options)
+        # assert isinstance(cs, HasOptions) or len(options)
         if cs is not None:
             options.update(cs.options)
         super().__init__(**options)

@@ -15,7 +15,7 @@ def files(dataset: str = None) -> FileList:
                         if dataset else FileInfo(**item) for item in data['files'])
 
 
-def download(dataset: str, period: str):
+def download(dataset: str, period: str, use_dataframe=True):
     params = {
         'dataset_path': dataset,
         'year_month': period,
@@ -27,4 +27,4 @@ def download(dataset: str, period: str):
         url = p.scheme+'://'+p.hostname+p.path
         params = parse_qs(p.query)
         data = client.get(url, **params)
-        return File(data)
+        return File(data).df if use_dataframe else File(data)

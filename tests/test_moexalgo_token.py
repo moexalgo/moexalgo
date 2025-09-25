@@ -5,8 +5,8 @@ from moexalgo import session, Stock, Market, Futures
 today = date.today()
 
 
-def test_market(datashop_apikey):
-    session.TOKEN = datashop_apikey
+def test_market(apikey):
+    session.TOKEN = apikey
     eq = Market('EQ')
     assert eq == Market('shares')
     assert eq == Market('shares', 'TQBR')
@@ -14,23 +14,23 @@ def test_market(datashop_apikey):
     assert len([ticker for ticker in tickers]) > 50
 
 
-def test_candles(datashop_apikey):
-    session.TOKEN = datashop_apikey
+def test_candles(apikey):
+    session.TOKEN = apikey
     MOEX = Stock('MOEX')
     it = MOEX.candles(start=today, end=today, latest=True, use_dataframe=False)
     next(it)
 
 
-def test_trades(datashop_apikey):
-    session.TOKEN = datashop_apikey
+def test_trades(apikey):
+    session.TOKEN = apikey
     MOEX = Stock('MOEX')
     it = MOEX.trades(use_dataframe=False)
     trade = next(it)
     assert 'TRADENO' in trade
 
 
-def test_tradestats(datashop_apikey):
-    session.TOKEN = datashop_apikey
+def test_tradestats(apikey):
+    session.TOKEN = apikey
     EQ = Market('EQ')
     it = EQ.tradestats(date=today, use_dataframe=False)
     tradestat = next(it)
@@ -45,8 +45,8 @@ def test_tradestats(datashop_apikey):
     assert 'disb' in tradestat
 
 
-def test_orderstats(datashop_apikey):
-    session.TOKEN = datashop_apikey
+def test_orderstats(apikey):
+    session.TOKEN = apikey
     EQ = Market('EQ')
     it = EQ.orderstats(date=today, use_dataframe=False)
     orderstat = next(it)
@@ -61,8 +61,8 @@ def test_orderstats(datashop_apikey):
     assert 'put_vwap_b' in orderstat
 
 
-def test_obstats(datashop_apikey):
-    session.TOKEN = datashop_apikey
+def test_obstats(apikey):
+    session.TOKEN = apikey
     EQ = Market('EQ')
     it = EQ.obstats(date=today, use_dataframe=False)
     obstat = next(it)
@@ -77,8 +77,8 @@ def test_obstats(datashop_apikey):
     assert 'spread_1mio' in obstat
 
 
-def test_futoi(datashop_apikey):
-    session.TOKEN = datashop_apikey
+def test_futoi(apikey):
+    session.TOKEN = apikey
     _14_day = today - timedelta(days=14)
     FO = Market('FO')
     it = FO.futoi(date=_14_day, use_dataframe=False)
