@@ -10,7 +10,8 @@ from stomp.utils import Frame, convert_frame, parse_frame
 
 
 class Credentials(t.NamedTuple):
-    """ Auth credentials """
+    """Auth credentials"""
+
     domain: str
     login: str
     passcode: str
@@ -35,7 +36,7 @@ class Subscription(t.AsyncIterator):
 
 
 class ISSPlusSTOMP:
-    """ ISS+ STOMP Client """
+    """ISS+ STOMP Client"""
 
     structure: dict[str, t.Any] = dict()
 
@@ -49,12 +50,12 @@ class ISSPlusSTOMP:
         return self.run_forever().__await__()
 
     async def __aenter__(self):
-        auth_frame = Frame('CONNECT', headers=self._cred._asdict())
-        await self._wscp.send(b''.join(convert_frame(auth_frame)))
+        auth_frame = Frame("CONNECT", headers=self._cred._asdict())
+        await self._wscp.send(b"".join(convert_frame(auth_frame)))
         async for message in self._wscp:
             frame = parse_frame(message)
-            if frame.cmd == 'CONNECTED':
-                self.structure = json.loads(frame.body.decode('utf8').strip('\0'))['structure']
+            if frame.cmd == "CONNECTED":
+                self.structure = json.loads(frame.body.decode("utf8").strip("\0"))["structure"]
                 self._task = asyncio.create_task(self._listener(), name="Message listener")
                 return self
             raise ConnectionRefusedError(f"STOMP authentication failed; {frame.headers['message']}")
@@ -67,21 +68,21 @@ class ISSPlusSTOMP:
 
     async def request(self, destination, selector):
         id = str(uuid.uuid4())
-        req_frame = Frame('REQUEST', headers=dict(id=id, destination=destination, selector=selector))
-        await self._wscp.send(b''.join(convert_frame(req_frame)))
+        req_frame = Frame("REQUEST", headers=dict(id=id, destination=destination, selector=selector))
+        await self._wscp.send(b"".join(convert_frame(req_frame)))
         future = self._pending[id] = asyncio.Future()
         return await future
 
     async def subscribe(self, destination, selector):
         id = str(uuid.uuid4())
-        subs_frame = Frame('SUBSCRIBE', headers=dict(id=id, receipt=id, destination=destination, selector=selector))
-        await self._wscp.send(b''.join(convert_frame(subs_frame)))
+        subs_frame = Frame("SUBSCRIBE", headers=dict(id=id, receipt=id, destination=destination, selector=selector))
+        await self._wscp.send(b"".join(convert_frame(subs_frame)))
         subscription = self._pending[id] = Subscription(id)
         return subscription
 
     async def unsubscribe(self, id: str):
-        unsub_frame = Frame('UNSUBSCRIBE', headers=dict(id=id))
-        await self._wscp.send(b''.join(convert_frame(unsub_frame)))
+        unsub_frame = Frame("UNSUBSCRIBE", headers=dict(id=id))
+        await self._wscp.send(b"".join(convert_frame(unsub_frame)))
         subscription = self._pending.pop(id, None)
         subscription._append(StopAsyncIteration())
 
@@ -107,23 +108,25 @@ class ISSPlusSTOMP:
         try:
             async for message in self._wscp:
                 frame = parse_frame(message)
-                if request_id := frame.headers.get('request-id'):
+                if request_id := frame.headers.get("request-id"):
                     if future := self._pending.pop(request_id, None):
-                        if frame.cmd == 'ERROR':
+                        if frame.cmd == "ERROR":
                             future.set_exception(
-                                RuntimeError(f"Request {request_id} failed: {frame.headers['message']}"))
+                                RuntimeError(f"Request {request_id} failed: {frame.headers['message']}")
+                            )
                         else:
-                            future.set_result(json.loads(frame.body.decode('utf8').strip('\0')))
+                            future.set_result(json.loads(frame.body.decode("utf8").strip("\0")))
                     else:
                         assert False, f"Cannot found pending for request: {request_id}"
-                elif subscription_id := frame.headers.get('subscription', frame.headers.get('receipt-id')):
+                elif subscription_id := frame.headers.get("subscription", frame.headers.get("receipt-id")):
                     if subscription := self._pending.get(subscription_id, None):
-                        if frame.cmd == 'ERROR':
+                        if frame.cmd == "ERROR":
                             subscription._append(
-                                RuntimeError(f"Subscription {subscription_id} failed: {frame.headers['message']}"))
+                                RuntimeError(f"Subscription {subscription_id} failed: {frame.headers['message']}")
+                            )
                             self._pending.pop(subscription_id, None)
                         else:
-                            data = frame.body.decode('utf8').strip('\0')
+                            data = frame.body.decode("utf8").strip("\0")
                             if data:
                                 subscription._append(json.loads(data))
                     else:
@@ -138,6 +141,6 @@ class ISSPlusSTOMP:
 
 @asynccontextmanager
 async def connect(url: str, credentials: Credentials):
-    async with websockets.connect(url, subprotocols=['STOMP']) as websocket:
+    async with websockets.connect(url, subprotocols=["STOMP"]) as websocket:
         async with ISSPlusSTOMP(websocket, credentials) as iss_plus:
             yield iss_plus

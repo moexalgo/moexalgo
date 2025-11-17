@@ -1,68 +1,27 @@
-import decimal
-import json as _json
-from datetime import datetime, date, time
+import sys
+from datetime import date
 from enum import Enum
+from typing import Any, Iterable
+from typing import Union, NamedTuple
 
+import orjson as json  # noqa
 
-class ISSTickerParamException(Exception):
-    """
-    Исключение, возникающее при отсутствии параметра `ticker`.
-
-    Attributes
-    ----------
-    message : str
-        Сообщение об ошибке
-    """
-
-    def __init__(self, message: str = "The start and end parameters are required") -> None:
-        self.message = message
-        super().__init__(self.message)
-
-
-class ISSDateParamException(Exception):
-    """
-    Исключение, возникающее при некорректном формате даты.
-
-    Attributes
-    ----------
-    message : str
-        Сообщение об ошибке
-    """
-
-    def __init__(self, message: str = "start must be less than or equal to end.") -> None:
-        """
-        Parameters
-        ----------
-        message : str
-            Сообщение об ошибке
-        
-        Returns
-        -------
-        return : None
-        """
-        self.message = message
-        super().__init__(self.message)
+pd = None
+if "ipykernel" in sys.modules:
+    try:
+        import pandas as pd
+        from pandas import DataFrame  # noqa
+    except ImportError:
+        pass
+else:
+    type DataFrame = Any
 
 
 class CandlePeriod(Enum):
     """
-    Временные интервалы для свечей.
-
-    Attributes
-    ----------
-    ONE_MINUTE : int
-        1 минута
-    TEN_MINUTES : int
-        10 минут
-    ONE_HOUR : int
-        1 час = 60 минут
-    ONE_DAY : int
-        1 день = 24 часа
-    ONE_WEEK : int
-        1 неделя = 7 дней
-    ONE_MONTH : int
-        1 месяц = 31 день
+    Возможные временные интервалы для свечей.
     """
+
     ONE_MINUTE = 1
     TEN_MINUTES = 10
     ONE_HOUR = 60
@@ -71,165 +30,142 @@ class CandlePeriod(Enum):
     ONE_MONTH = 31
 
 
-class RequiredImport:
+class Desc(NamedTuple):
+    aliases: list[str]
+    features: dict[str, str] | None = None
+
+
+def normalize_period(period: CandlePeriod | int | str) -> int:
     """
-    Класс для импорта библиотеки, если она не была установлена.
-
-    Attributes
-    ----------
-    __name : str
-        Название библиотеки (модуля).
+    Нормализует значение периода во внутреннее представление ISS.
     """
+    interval = CandlePeriod.TEN_MINUTES.value
 
-    def __init__(self, name: str) -> None:
-        """
-        Parameters
-        ----------
-        name : str
-            Название библиотеки.
-        
-        Returns
-        -------
-        return : None
-        """
-        self.__name = name
+    if isinstance(period, CandlePeriod):
+        interval = period.value
 
-    def __getattr__(self, item: str) -> None:
-        """
-        Parameters
-        ----------
-        item : str
-            Название атрибута.
-        
-        Returns
-        -------
-        return : None
-        """
-        raise ImportError(f'Required `{self.__name}`')
+    elif isinstance(period, int):
+        if period == 1:
+            interval = CandlePeriod.ONE_MINUTE.value
+        elif period == 10:
+            interval = CandlePeriod.TEN_MINUTES.value
+        elif period == 60:
+            interval = CandlePeriod.ONE_HOUR.value
+        elif period == 24:
+            interval = CandlePeriod.ONE_DAY.value
+        elif period == 7:
+            interval = CandlePeriod.ONE_WEEK.value
+        elif period == 31:
+            interval = CandlePeriod.ONE_MONTH.value
+        else:
+            raise ValueError("Некорректное значение параметра `period`")
+
+    elif isinstance(period, str):
+        if period == "1min":
+            interval = CandlePeriod.ONE_MINUTE.value
+        elif period == "10min":
+            interval = CandlePeriod.TEN_MINUTES.value
+        elif period in ("1h", "1H"):
+            interval = CandlePeriod.ONE_HOUR.value
+        elif period in ("1d", "1D"):
+            interval = CandlePeriod.ONE_DAY.value
+        elif period in ("1w", "1W"):
+            interval = CandlePeriod.ONE_WEEK.value
+        elif period in ("1m", "1M"):
+            interval = CandlePeriod.ONE_MONTH.value
+        else:
+            raise ValueError("Некорректное значение параметра `period`")
+
+    elif period is None:
+        pass
+    else:
+        raise TypeError("Неверный тип для `period`")
+
+    return interval
 
 
-try:
-    import pandas as pd
-except ImportError:
-    pandas = RequiredImport('pandas')
-
-
-class json:
+def prepare_from_till_dates(from_date: Union[str, date] = None, till_date: Union[str, date] = None) -> tuple[str, str]:
     """
-    Класс для работы с JSON.
+    Подготовка дат начала и окончания.
 
-    Attributes
-    ----------
-    loads : Callable
-        Загрузка JSON.
-    JSONDecodeError : Exception
-        Исключение при ошибке декодирования JSON.
-    dumps : Callable
-        Сохранение JSON.
-    """
-    loads = _json.loads
-    JSONDecodeError = _json.JSONDecodeError
-
-    @staticmethod
-    def dumps(*args, **kwargs) -> str:
-        """
-        Parameters
-        ----------
-        args : Any
-            Аргументы.
-        kwargs : Any
-            Ключевые аргументы.
-        
-        Returns
-        -------
-        return : str
-            Строка JSON.
-        """
-
-        def default(obj: object) -> object:
-            """
-            Параметры по умолчанию для преобразования объектов в JSON.
-
-            Parameters
-            ----------
-            obj : object
-                Объект данных.
-
-            Returns
-            -------
-            return : object
-                Объект данных.
-            """
-            if isinstance(obj, decimal.Decimal):
-                return float(str(obj))
-            elif isinstance(obj, (datetime, date, time)):
-                return obj.isoformat()
-            
-            raise TypeError
-
-        return _json.dumps(*args, **kwargs, default=default)
-
-
-def result_deserializer(data: dict, *sections, key: callable = None) -> dict:
-    """
     Parameters
     ----------
-    data : dict
-        Слоаврь с данными от ISS.
-    sections : Tuple
-        Секции данных, by default ('securities', 'marketdata').
-    key : Callable
-        Ключевая функция, которая принимает элемент данных и возвращает ключ, by default None.
+    from_date :
+        Дата начала, by default None.
+    till_date :
+        Дата окончания, by default None.
 
     Returns
     -------
-    return : dict
-        Словарь с данными.
+    return : tuple[str, str]
+        Кортеж с датами начала и окончания.
     """
-    result = dict()
+    if (from_date is None) or (till_date is None):
+        raise ValueError("Оба параметра `from_date` и `till_date` должны быть заданы")
 
-    sections = sections or ('securities', 'marketdata')
-    for section in sections:
-        metadata = data[section]['metadata']
-        columns = data[section]['columns']
+    from_date = date.fromisoformat(from_date) if isinstance(from_date, str) else (from_date or date.today())
+    if not till_date:
+        till_date = from_date
+    elif isinstance(till_date, str):
+        till_date = date.today() if till_date == "today" else date.fromisoformat(till_date)
 
-        for values in data[section]['data']:
-            item = item_normalizer(metadata, dict(zip(columns, values)))
+    if from_date > till_date:
+        raise ValueError("Параметр `from_date` должен быть меньше или равный `till_date`")
 
-            if key:
-                result.setdefault(section, dict())[key(item)] = item
-            else:
-                result.setdefault(section, list()).append(item)
-    
+    return from_date.isoformat(), till_date.isoformat()
+
+
+def calc_offset_limit(
+    offset: int = None,
+    limit: int = None,
+    min_limit: int = 1,
+    standart_limit: int = 10_000,
+    max_limit: int = 50_000,
+    min_offset: int = 0,
+) -> tuple[int, int]:
+    """
+    Вычисление смещения и лимита.
+
+    Parameters
+    ----------
+    offset : int, optional
+        Смещение относительно начала, by default None.
+    limit : int, optional
+        Лимит данных, by default None.
+
+    Returns
+    -------
+    return : tuple[int, int]
+        Кортеж со смещением и лимитом.
+    """
+    offset = offset or min_offset
+    if limit != -1:
+        limit = limit or standart_limit
+
+        limit = min_limit if limit < min_limit else max_limit if limit > max_limit else limit
+        offset = min_offset if offset < min_offset else max_limit - 1 if offset >= max_limit else offset
+
+    return offset, limit
+
+
+def normalize_data(data: Iterable[dict[str, Any]], *fields: str | tuple[str, str]) -> Iterable[dict[str, Any]]:
+    names = {"secid": "ticker", "boardid": "board"}
+    names.update(dict((f, f) if isinstance(f, str) else (f[0], f[1]) for f in fields))
+
+    keys = [names.get(name.lower(), name.lower()) for name in data["columns"]]
+    rows = data["data"]
+    data = [dict(zip(keys, row)) for row in rows]
+    if fields:
+        keys = tuple(names.values())
+        return [dict((k, v) for k, v in row.items() if k in keys) for row in data]
+    return data
+
+
+def result_adapter(result: dict | Iterable[dict], native: bool) -> dict | Iterable[dict] | DataFrame | None:
+    """Преобразует результат в `pandas.DataFrame` если применимо."""
+    use_dataframe = not native and pd is not None
+    if use_dataframe:
+        if result is None:
+            return None
+        result = pd.DataFrame([result] if isinstance(result, dict) else list(result))
     return result
-
-
-def item_normalizer(metadata: dict, item: dict) -> dict:
-    """
-    Нормализация данных.
-
-    Parameters
-    ----------
-    metadata : dict
-        Метаданные.
-    item : dict
-        Элемент данных.
-    
-    Notes
-    -----
-    `lambda s: …` - очень дорогая операция на больших данных без numpy.
-
-    Returns
-    -------
-    return : dict
-        Словарь с нормализованными данными.
-    """
-    conv = {
-        'int32': lambda s: int(s) if s is not None else None,
-        'int64': lambda s: int(s) if s is not None else None,
-        'double': lambda s: float(s) if s is not None else None,
-        'date': lambda s: date.fromisoformat(s.strip()) if (s is not None) and (s != '0000-00-00') else None,
-        'datetime': lambda s: datetime.fromisoformat(s.strip()) if s is not None else None,
-        'time': lambda s: time.fromisoformat(s.strip()) if s is not None else None
-    }
-    return dict((key, conv.get(metadata[key]['type'], str)(value)) for key, value in item.items())

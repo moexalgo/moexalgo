@@ -1,3 +1,21 @@
+Metadata-Version: 2.4
+Name: moexalgo
+Version: 2.5.0
+Summary: Python lib for MOEX AlgoPack data
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python
+Requires-Python: >=3.12
+Requires-Dist: httpx
+Requires-Dist: orjson>=3.11.3
+Provides-Extra: dataframe
+Requires-Dist: pandas; extra == 'dataframe'
+Provides-Extra: issplus
+Requires-Dist: stomp-py; extra == 'issplus'
+Requires-Dist: websockets; extra == 'issplus'
+Description-Content-Type: text/markdown
+
 # MoexAlgo: Получение уникальных данных MOEX ALGOPACK 📈
 
 ### 🌐 [Сайт с полной документацией по продукту ALGOPACK](https://moexalgo.github.io/)

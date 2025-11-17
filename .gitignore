@@ -1,14 +1,25 @@
-.venv/
-venv/
+# Python-generated files
 __pycache__/
-__version__.py
+*.py[oc]
 build/
 dist/
-eggs/
-sdist/
-*.egg*
+wheels/
+*.egg-info
+
 nosetests.xml
 coverage.xml
 *.log
 docs/_build/
+.env
+-*
++*
+
+# Virtual environments
+.venv
+
+# IDE
 .idea
+.vscode
+
+# dynamic = ["version"]
+__version__.py

@@ -1,83 +1,83 @@
-from __future__ import annotations
+import sys
+from datetime import date
+from types import ModuleType
 
-from typing import Union
-
-from .tickers import _Ticker, _resolve_ticker
-
-try:
-    from .__version__ import version as __version__
-except ImportError:
-    pass
-
-from .requests import get_secid_info_and_boards
-
-from .next import Market as NewMarket, Ticker as NewTicker, protocols
-from .market import Market as OldMarket
-from .tickers import _Ticker
-from .stocks import Stock
-from .indices import Index
-from .currency import Currency
-from .futures import Futures
-from .utils import CandlePeriod
-from .tools import resample
-
-AnyTickers = Union["Stock", "Index", "Currency", "Futures"]
+import moexalgo.engines.currency
+import moexalgo.engines.futures
+import moexalgo.engines.stock
+from moexalgo import engines
+from moexalgo.features.algopack import AlgopackMarketMixin, AlgopackTickerMixin
+from moexalgo.features.common import CommonMarket, CommonTicker
+from moexalgo.features.extramarket import ExtraMarketMixin
+from moexalgo.session import Session
+from moexalgo.utils import Desc, CandlePeriod
 
 
-def Market(secid: str, boardid: str = None) -> OldMarket | protocols.Market:
+def Market(name: str, board: str = None) -> CommonMarket | ExtraMarketMixin | AlgopackMarketMixin:
     """
-    Получение объекта определяющего раздел финансового рынка.
-    """
-    try:
-        return OldMarket(secid, boardid)
-    except NotImplementedError:
-        return NewMarket(secid, boardid)
-
-
-def Ticker(secid: str, boardid: str = None) -> AnyTickers | protocols.Ticker:
-    """
-    Получение объекта финансового инструмента по тикеру и типу рынка.
-
-    Этот метод позволяет получить объект `Index` или `Stock`, содержащий информацию
-    о финансовом инструменте, идентифицируемом по тикеру и, опционально, типу рынка.
+    Представление раздела биржевого рынка.
 
     Parameters
     ----------
-    secid : str
-        Тикер финансового инструмента, например "GAZP" для акций Газпрома.
-    boardid : str, optional
-        Идентификатор рынка, на котором торгуется инструмент,
-        например "TQBR" для основного рынка акций на Московской бирже.
-
-    Notes
-    -----
-    По умолчанию значение `None` для `boardid` означает использование стандартного рынка.
-
-    Returns
-    -------
-    return : Union[Index, Stock]
-        Объект класса Index или Stock, содержащий информацию о запрашиваемом финансовом инструменте.
-
-    Raises
-    ------
-    LookupError
-        Исключение возникает, если тикер не найден на указанном рынке.
-
-    Example
-    -------
-    .. code-block:: python
-
-        # Получение информации об акции
-        >>> try:
-        >>>     instrument = Ticker("GAZP", "TQBR")
-        >>>     print(instrument)
-        >>> except LookupError:
-        >>>     print("Тикер не найден.")
+    name : str
+        Название рынка или его символическое имя.
+    board : str, optional
+        Идентификатор, указывающий на специфическую торговую площадку или сегмент рынка.
+        Если не указано, автоматически определятся первичный идентификатор на основе общих правил.
     """
-    if info := _resolve_ticker(secid, boardid):
-        secid, boardid, market, engine, *args = info
-        allowed_tickers = dict((item._PATH, item) for item in [Currency, Futures, Index, Stock])
-        if allowed_ticker := allowed_tickers.get(f"engines/{engine}/markets/{market}"):
-            return allowed_ticker(*info)
+    RESOLVE_MAP = {
+        (engines.currency, "selt", "CETS"): Desc(["selt", "currency", "fx"], dict(algopack="datashop/algopack/fx")),
+        (engines.stock, "shares", "TQBR"): Desc(
+            ["shares", "stocks", "equity", "eq"], dict(algopack="datashop/algopack/eq")
+        ),
+        (engines.stock, "index", "SNDX"): Desc(["index"]),
+        (engines.stock, "bonds", "TQOB"): Desc(["bonds"]),
+        (engines.futures, "forts", "RFUD"): Desc(
+            ["futures", "forts", "fo"],
+            dict(algopack="datashop/algopack/fo", futoi="analyticalproducts/futoi/securities"),
+        ),
+        (engines.futures, "options", "ROPD"): Desc(["options"]),
+    }
 
-    return NewTicker(secid, boardid)
+    def resolve(name: str, boardid: str | None) -> tuple[ModuleType, str, str, dict[str, str]]:
+        for (module, market, default_boardid), (aliases, features) in RESOLVE_MAP.items():
+            if name in aliases:
+                return module, market, boardid or default_boardid, features or {}
+        raise LookupError(f"Unrecognized market' name '{name}'")
+
+    module, name, boardid, features = resolve(name.lower(), board.upper() if board else None)
+    return getattr(module, "Market")(name, boardid, features)
+
+
+def Ticker(name: str, board: str = None) -> CommonTicker | AlgopackTickerMixin:
+    """
+    Представление конкретного финансового инструмента.
+
+    Parameters
+    ----------
+    name : str
+        Тикер финансового инструмента, например "GAZP" для акций Газпрома.
+    board : str, optional
+        Идентификатор, указывающий на специфическую торговую площадку или сегмент рынка.
+        Если не указано, автоматически определятся первичный идентификатор на основе общих правил.
+    """
+
+    def resolve(secid: str, boardid: str | None) -> tuple[str, str, str, int, bool]:
+        with Session() as client:
+            data = client.get_objects(
+                f"securities/{secid}",
+                lambda data: [dict(zip(data["boards"]["columns"], row)) for row in data["boards"]["data"]],
+            )
+        if found := [
+            item
+            for item in data
+            if item["secid"] == secid and (item["boardid"] == boardid if boardid is not None else item["is_primary"])
+        ]:
+            match found[0]:
+                case {"boardid": boardid, "market": market, "decimals": decimals, "listed_till": listed_till}:
+                    return market, boardid, secid, decimals, date.fromisoformat(listed_till) < date.today()
+        raise LookupError(f"Unrecognized ticker' name '{secid}'")
+
+    market, boardid, secid, decimals, delisted = resolve(name.upper(), board.upper() if board is not None else None)
+    market = Market(market, boardid)
+    return getattr(sys.modules[market.__module__], "Ticker")(market, boardid, secid, decimals, delisted)
