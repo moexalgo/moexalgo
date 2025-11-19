@@ -31,7 +31,7 @@ class CommonMarket:
         self.engine = engine
 
     def _get_path_for(self, feature):
-        if path := self.features.get("algopack"):
+        if path := self.features.get(feature):
             return path
         raise NotImplementedError(f"Methods of `{feature}` is not implemented for this endpoint.")
 
