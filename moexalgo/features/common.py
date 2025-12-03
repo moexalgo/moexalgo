@@ -4,7 +4,6 @@ from typing import Any, Iterable
 from moexalgo.session import Session
 from moexalgo.tools import resample
 from moexalgo.utils import (
-    DataFrame,
     result_adapter,
     normalize_data,
     CandlePeriod,
@@ -13,6 +12,8 @@ from moexalgo.utils import (
     calc_offset_limit,
 )
 
+type DataFrame = Any
+
 
 class CommonMarket:
     """
@@ -20,8 +21,11 @@ class CommonMarket:
 
     Notes
     -----
-    При использовании в среде Jupiter Notebook по умалчиванию данные возвращаются в виде `DataFrame`.
-    Используйте в методах флаг `native` что бы отменить такое поведение.
+    Все методы возвращают по умолчанию `DataFrame`.
+    Что бы отменить такое поведение, вы можете выставить глобальную переменную `USE_DATAFRAME` в значение `False`.
+    Тогда в среде Jupiter Notebook по данные будут возвращаться в виде `DataFrame`, а в среде Python (обычные скрипты)
+    по данные возвращаются в виде `Iterable[dict]`.
+    Если в методах установлен флаг `native`, то данные будут возвращаться в виде `Iterable[dict]` в любом случае.
     """
 
     def __init__(self, engine: str, market: str, boardid: str, features: dict[str, str]):
@@ -48,7 +52,7 @@ class CommonMarket:
         fields :
             Поля для отображения; "*" все поля
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         fields = () if "*" in fields else fields
         return result_adapter(
@@ -68,7 +72,7 @@ class CommonMarket:
         fields :
             Поля для отображения; "*" все поля
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         fields = () if "*" in fields else fields
         return result_adapter(
@@ -108,8 +112,11 @@ class CommonTicker:
 
     Notes
     -----
-    При использовании в среде Jupiter Notebook по умалчиванию данные возвращаются в виде `DataFrame`.
-    Используйте в методах флаг `native` что бы отменить такое поведение.
+    Все методы возвращают по умолчанию `DataFrame`.
+    Что бы отменить такое поведение, вы можете выставить глобальную переменную `USE_DATAFRAME` в значение `False`.
+    Тогда в среде Jupiter Notebook по данные будут возвращаться в виде `DataFrame`, а в среде Python (обычные скрипты)
+    по данные возвращаются в виде `Iterable[dict]`.
+    Если в методах установлен флаг `native`, то данные будут возвращаться в виде `Iterable[dict]` в любом случае.
     """
 
     def __init__(self, market: CommonMarket, boardid: str, secid: str, decimals: int, delisted: bool):
@@ -139,10 +146,12 @@ class CommonTicker:
 
         def fetch():
             with Session() as client:
-                data = normalize_data(client.get_objects(f"securities/{self.secid}", lambda data: data["boards"]))
+                data = normalize_data(
+                    client.get_objects(f"securities/{self.secid}", lambda data: data["boards"]), *fields
+                )
                 return [item for item in data if item["ticker"] == self.secid]
 
-        return result_adapter(normalize_data(fetch(), *fields), native)
+        return result_adapter(fetch(), native)
 
     def candles(
         self,
@@ -172,7 +181,7 @@ class CommonTicker:
         latest :
             Включает режим выдачи последних `latest` записей в наборе, by default False.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         resample_to = None
         try:
@@ -212,7 +221,7 @@ class CommonTicker:
         tradeno :
             Номер сделки с которого выдаются данные, если не задано, то с начала дня.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         key = "recno" if self.market in ("forts", "options") else "tradeno"
         options = {key: tradeno}
@@ -233,7 +242,7 @@ class CommonTicker:
         Parameters
         ----------
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         options = dict(offset=0, limit=-1)
         return result_adapter(

@@ -4,12 +4,13 @@ from datetime import date
 from moexalgo.features.common import CommonTicker, CommonMarket
 from moexalgo.session import Session
 from moexalgo.utils import (
-    DataFrame,
     result_adapter,
     prepare_from_till_dates,
     calc_offset_limit,
     normalize_data,
 )
+
+type DataFrame = t.Any
 
 
 class AlgopackMarketMixin:
@@ -37,7 +38,7 @@ class AlgopackMarketMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self._get_path_for("algopack")
         date, _ = prepare_from_till_dates(date, date)
@@ -67,7 +68,7 @@ class AlgopackMarketMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self._get_path_for("algopack")
         date, _ = prepare_from_till_dates(date, date)
@@ -97,7 +98,7 @@ class AlgopackMarketMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self._get_path_for("algopack")
         date, _ = prepare_from_till_dates(date, date)
@@ -127,7 +128,7 @@ class AlgopackMarketMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self._get_path_for("algopack")
         date, _ = prepare_from_till_dates(date, date)
@@ -157,7 +158,7 @@ class AlgopackMarketMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self._get_path_for("algopack")
         date, _ = prepare_from_till_dates(date, date)
@@ -196,7 +197,7 @@ class AlgopackTickerMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self.market._get_path_for("algopack")
         from_date, till_date = prepare_from_till_dates(start, end)
@@ -229,7 +230,7 @@ class AlgopackTickerMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self.market._get_path_for("algopack")
         from_date, till_date = prepare_from_till_dates(start, end)
@@ -262,7 +263,7 @@ class AlgopackTickerMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self.market._get_path_for("algopack")
         from_date, till_date = prepare_from_till_dates(start, end)
@@ -295,7 +296,7 @@ class AlgopackTickerMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self.market._get_path_for("algopack")
         from_date, till_date = prepare_from_till_dates(start, end)
@@ -328,7 +329,7 @@ class AlgopackTickerMixin:
         offset :
             Начальная позиция в последовательности записей.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         path = self.market._get_path_for("algopack")
         from_date, till_date = prepare_from_till_dates(start, end)

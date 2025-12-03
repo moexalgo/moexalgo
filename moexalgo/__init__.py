@@ -78,6 +78,6 @@ def Ticker(name: str, board: str = None) -> CommonTicker | AlgopackTickerMixin:
                     return market, boardid, secid, decimals, date.fromisoformat(listed_till) < date.today()
         raise LookupError(f"Unrecognized ticker' name '{secid}'")
 
-    market, boardid, secid, decimals, delisted = resolve(name.upper(), board.upper() if board is not None else None)
+    market, boardid, secid, decimals, delisted = resolve(name, board.upper() if board is not None else None)
     market = Market(market, boardid)
     return getattr(sys.modules[market.__module__], "Ticker")(market, boardid, secid, decimals, delisted)

@@ -1,10 +1,9 @@
 from typing import Iterable, Any
 
 from moexalgo.features.algopack import AlgopackTickerMixin, AlgopackMarketMixin
-from moexalgo.features.common import CommonMarket, CommonTicker
+from moexalgo.features.common import CommonMarket, CommonTicker, DataFrame
 from moexalgo.features.extramarket import ExtraMarketMixin
 from moexalgo.features.futoi import FutOIMarketMixin, FutOITickerMixin
-from moexalgo.utils import DataFrame
 
 FORTS_TICKERS_DEFAULT_FIELDS = (
     "sectype",

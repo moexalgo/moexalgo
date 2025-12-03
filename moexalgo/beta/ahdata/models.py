@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO, TextIOWrapper
 
-from moexalgo.utils import pd
+import pandas as pd
 
 
 @dataclass

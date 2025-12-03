@@ -2,8 +2,8 @@ from typing import Iterable, Any
 
 from moexalgo.features.algopack import AlgopackMarketMixin, AlgopackTickerMixin
 from moexalgo.features.common import CommonMarket, CommonTicker
+from moexalgo.features.common import DataFrame
 from moexalgo.features.extramarket import ExtraMarketMixin
-from moexalgo.utils import DataFrame
 
 SELT_TICKERS_DEFAULT_FIELDS = (
     "shortname",  # Краткое наименование

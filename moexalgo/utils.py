@@ -6,15 +6,11 @@ from typing import Union, NamedTuple
 
 import orjson as json  # noqa
 
-pd = None
-if "ipykernel" in sys.modules:
-    try:
-        import pandas as pd
-        from pandas import DataFrame  # noqa
-    except ImportError:
-        pass
-else:
-    type DataFrame = Any
+type DataFrame = Any
+USE_DATAFRAME = True
+"""
+Включает выдачу датафреймов по умалчиванию. Отключить для автоопределения среды.
+"""
 
 
 class CandlePeriod(Enum):
@@ -163,9 +159,16 @@ def normalize_data(data: Iterable[dict[str, Any]], *fields: str | tuple[str, str
 
 def result_adapter(result: dict | Iterable[dict], native: bool) -> dict | Iterable[dict] | DataFrame | None:
     """Преобразует результат в `pandas.DataFrame` если применимо."""
-    use_dataframe = not native and pd is not None
+    if native:
+        use_dataframe = False
+    elif USE_DATAFRAME:
+        use_dataframe = True
+    else:
+        use_dataframe = "ipykernel" in sys.modules
     if use_dataframe:
+        from pandas import DataFrame
+
         if result is None:
             return None
-        result = pd.DataFrame([result] if isinstance(result, dict) else list(result))
+        result = DataFrame([result] if isinstance(result, dict) else list(result))
     return result

@@ -3,7 +3,9 @@ from typing import Any, Iterable
 
 from moexalgo.features.common import CommonMarket
 from moexalgo.session import Session
-from moexalgo.utils import DataFrame, result_adapter, normalize_data
+from moexalgo.utils import result_adapter, normalize_data
+
+type DataFrame = Any
 
 
 class ExtraMarketMixin:
@@ -29,7 +31,7 @@ class ExtraMarketMixin:
         recno :
             Номер порядка заключения сделок, для срочного рынка.
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         key = "recno" if self.market in ("forts", "options") else "tradeno"
         options = dict()
@@ -47,7 +49,7 @@ class ExtraMarketMixin:
         Parameters
         ----------
         native :
-            Если флаг выставлен в `True` всегда возвращается итератор словарей.
+            Если флаг выставлен в `True` возвращается итератор словарей.
         """
         data = list(reversed(list(self.trades(native=True))))
         if data:
@@ -91,8 +93,12 @@ def fetch_trades(engine, market: str, boardid: str, **options) -> Iterable[dict[
 
 def make_candles(trades: list[dict[str, Any]], begin: datetime, interval: int) -> list[dict[str, Any]]:
 
+    last_ticker = None
+
     def make_candles_(ticker, data, end_):
-        return dict(
+        nonlocal last_ticker
+        first = last_ticker != ticker
+        candle = dict(
             ticker=ticker,
             open=data[0]["price"],
             high=max(item["price"] for item in data),
@@ -101,12 +107,10 @@ def make_candles(trades: list[dict[str, Any]], begin: datetime, interval: int) -
             volume=int(sum(item["quantity"] or 0 for item in data)),
             value=round(sum(item["value"] or 0 for item in data), 1),
             begin=end_ - timedelta(seconds=interval),
-            end=(
-                data[-1]["tradetime"]
-                if end_ - timedelta(microseconds=1) >= datetime.now()
-                else end_ - timedelta(microseconds=1)
-            ).replace(microsecond=0),
+            end=(data[-1]["tradetime"] if not first else end_ - timedelta(microseconds=1)).replace(microsecond=0),
         )
+        last_ticker = ticker
+        return candle
 
     trades_ = dict()
     for trade in sorted(trades, key=lambda t: (t["ticker"], t["tradetime"])):
