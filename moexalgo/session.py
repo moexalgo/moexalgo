@@ -382,7 +382,7 @@ class Session(HasOptions):
         return : Client
             Клиент для работы с API.
         """
-        self._client = Client(False, **self.options)
+        self._client = self._client_cls(False, **self.options)
         await self._client.httpx_cli.__aenter__()
         return self._client
 
